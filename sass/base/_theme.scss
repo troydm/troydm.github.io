@@ -12,8 +12,8 @@ $main-bg: #f8f8f8 !default;
 $page-bg: #f8f8f8 !default;
 $article-border: #eeeeee !default;
 
-$header-bg: #333 !default;
-$header-border: lighten($header-bg, 15) !default;
+$header-bg: linear-gradient(darken(#666, 8), #000, lighten(#666, 8)) !default;
+$header-border: lighten(#fff, 15) !default;
 $title-color: #FFF !default;
 $subtitle-color: #aaa !default;
 
@@ -71,14 +71,14 @@ a {
 }
 
 html {
-  background: $page-bg image-url('line-tile.png') top left;
+  background: linear-gradient(to left, $main-bg 0%, #aaa 50%, $main-bg 100%);
 }
 body {
   > div {
     background: $sidebar-bg $noise-bg;
     border-bottom: 1px solid $page-border-bottom;
     > div {
-      background: $main-bg $noise-bg;
+      background: linear-gradient(to left, #f0f0f0 0%, $main-bg 2%, $main-bg 98%,  #f5f5f5 100%);
       border-right: 1px solid $sidebar-border;
     }
   }
