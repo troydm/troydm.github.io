@@ -13,6 +13,10 @@ I'm also [anime addict](http://myanimelist.net/profile/Troydm) and i love playin
 
 I work as independant IT consultant so you can always hire me for your next big startup
 
-You can find me on [freenode](https://www.freenode.net/) IRC where i go by nickname: troydm
+You can find me on [freenode](https://www.freenode.net/) IRC where i go by nickname: **troydm**
 
 Follow me on [twitter](https://twitter.com/dgeurkov) or checkout my [linkedin](https://www.linkedin.com/in/dgeurkov) profile
+
+My Email: [d.geurkov@gmail.com](mailto:d.geurkov@gmail.com)
+
+My [Public PGP/GPG Key](/pubkey.asc)
