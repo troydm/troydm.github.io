@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Troydm's Blog</title>
+  <title>Writting IRC Bot using Perl 5 and POCO::IRC - Troydm's Blog</title>
   <meta name="author" content="Dmitry Geurkov">
 
   
@@ -19,7 +19,7 @@ It was invented a really long time ago and isn&#8217;t going away anytime soon d
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://troydm.github.io">
+  <link rel="canonical" href="http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Troydm's Blog" type="application/atom+xml">
@@ -66,15 +66,12 @@ It was invented a really long time ago and isn&#8217;t going away anytime soon d
 </nav>
   <div id="main">
     <div id="content">
-      <div class="blog-index">
+      <div>
+<article class="hentry" role="article">
   
-  
-  
-    <article>
-      
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writting IRC Bot Using Perl 5 and POCO::IRC</a></h1>
+      <h1 class="entry-title">Writting IRC Bot Using Perl 5 and POCO::IRC</h1>
     
     
       <p class="meta">
@@ -97,7 +94,7 @@ It was invented a really long time ago and isn&#8217;t going away anytime soon d
   </header>
 
 
-  <div class="entry-content"><p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don&#8217;t.
+<div class="entry-content"><p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don&#8217;t.
 It was invented a really long time ago and isn&#8217;t going away anytime soon despite some new generation alternatives poping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
 
 <p>Personally i always have my irc client running (i&#8217;m using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
@@ -134,22 +131,16 @@ Just two simple functions that do all the complex work work for me. Since i want
 
 
 </div>
-  
-  
 
 
-    </article>
-  
-  
-    <article>
+  <footer>
+    <p class="meta">
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/">Hosting Your Own Remote Private Torrent Tracker</a></h1>
-    
-    
-      <p class="meta">
-        
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Dmitry Geurkov</span></span>
+
+      
 
 
 
@@ -161,84 +152,51 @@ Just two simple functions that do all the complex work work for me. Since i want
   
 
 
-<time datetime="2013-04-24T22:05:00+04:00" pubdate data-updated="true">Apr 24<span>th</span>, 2013</time>
-        
-      </p>
+<time datetime="2013-07-22T21:29:00+04:00" pubdate data-updated="true">Jul 22<span>nd</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/irc/'>irc</a>, <a class='category' href='/blog/categories/perl/'>perl</a>, <a class='category' href='/blog/categories/shell/'>shell</a>
+  
+</span>
+
+
+    </p>
     
-  </header>
-
-
-  <div class="entry-content"><p>Evar wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
-
-<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won&#8217;t consider them here!
-So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?</p>
-
-<p>Oh you don&#8217;t? Snap it&#8217;s it&#8217;s so useful that nowadays almost everyone has some kind of NAS that he/she is using for file storage and torrents.
-So if you don&#8217;t have one then you are behind of times</p>
-
-<p>So what do we need to share some file over torrent? Yes indeed we need a torrent tracker</p>
-
-<p><a href="http://thepiratebay.se"><img src="https://thepiratebay.se/static/img/tpb.jpg" alt="The Pirate Bay" /></a></p>
-
-<p>You probably heard of the famous pirate bay arrr!&#8230; haven&#8217;t you?
-Well pirate bay has a torrent tracker and you don&#8217;t. So you either have a choice and become a pirate bay resident and upload your torrent on their site
-or you can host your own little pirate bay just for you and your friends only</p>
-
-<p>Most torrent clients include torrent tracker functionality out of the box but let&#8217;s consider our little case were we a have headless home server with torrent client
-that has only web interface and no torrent tracker
-So what do we do? We run our own standalone torrent tracker!</p>
-
-<p>So that&#8217;s how i&#8217;ve ended on <a href="http://en.wikipedia.org/wiki/Comparison_of_BitTorrent_tracker_software">this page</a></p>
-
-<p>My first choice was <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a> which is a very popular tracker that even pirate bay uses on their servers.
-First thing i did i&#8217;ve compiled and configured it in few mins and had it running on my <strong>6969</strong> port.
-So i&#8217;ve port forwarded my router&#8217;s external ip <strong>6969</strong> port to my NAS box&#8217;s port and checked if i could access it remotely!
-So the next thing i&#8217;ve created a torrent with my torrent tracker announce url specified as <strong>http://192.168.0.x:6969/announce</strong> using <a href="http://mktorrent.sourceforge.net/">mktorrent</a>
-and added it to my torrent client which started seeding it right away. The next step i&#8217;ve created the same torrent file with announce url changed to my external ip and sent it to my friend!
-My friend started his torrent client and added the torrent. He could see that it had one seeder but still couldn&#8217;t download the file. Simple troubleshooting revealed that my torrent tracker
-was listing my seeder peer with a local network ip address that my friend&#8217;s torrent client couldn&#8217;t connect to&#8230;</p>
-
-<p><img src="http://i.imgur.com/TCYjoCe.jpg" alt="Crying Loli" /></p>
-
-<p>I knew now what i needed from torrent tracker. My port was the same but my ip address should be external instead of internal.
-I needed local ip subsituted with remote ip for all external network peers. The peer port would remain the same since i have the same port forwarded.</p>
-
-<p>Unfortunately i couldn&#8217;t find any functionality in <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a> that would do that :(</p>
-
-<p>So next thing i did i&#8217;ve downloaded <a href="https://code.google.com/p/udpt/">udpt</a> and had it compiled.
-It uses <a href="http://www.bittorrent.org/beps/bep_0015.html">udp tracker protocol</a> which is much more
-network effecient. <a href="https://code.google.com/p/udpt/">udpt</a> is much more smaller than <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a>
-in both source code and functionality and thus was ideal to experiment with.</p>
-
-<p>Adding the needed functionality didn&#8217;t solved my problem because udpt had some other bugs that i had to track down but in a few hours i had everything up and working!
-In the end i had a fully working private torrent tracker that was doing what i was hoping for.
-I&#8217;ve even added code to run it as linux daemon thanks to <a href="http://www.netzmafia.de/skripten/unix/linux-daemon-howto.html">this little howto</a></p>
-
-<p>My experimental fork is at <a href="https://github.com/troydm/udpt">this repository</a></p>
-
-<p><img src="http://i.imgur.com/M6W7RfM.png" alt="Pirate Loli" /></p>
-
-<p>Happy torrenting pirates!</p>
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/" data-via="" data-counturl="http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/" >Tweet</a>
+  
+  
+  
 </div>
-  
-  
 
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/" title="Previous Post: Hosting your own remote private torrent tracker">&laquo; Hosting your own remote private torrent tracker</a>
+      
+      
+    </p>
+  </footer>
+</article>
 
-    </article>
-  
-  <div class="pagination">
-    
-    <a href="/blog/archives">Blog Archives</a>
-    
-  </div>
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
 </div>
+  </section>
+
+</div>
+
 <aside class="sidebar">
   
     <section>
   <h1>About Me</h1>
   <a href="/about"><img src="/images/me.jpg"></a>
   <p>
-  I&#8217;m software developer, functional programming enthusiast 
+  I'm software developer, functional programming enthusiast 
   and open source evangelist from <a href="https://en.wikipedia.org/wiki/Tbilisi">Tbilisi, Georgia</a>
   </p>
 </section>
@@ -260,7 +218,7 @@ I&#8217;ve even added code to run it as linux daemon thanks to <a href="http://w
 <section>
   <h1>GitHub Repos</h1>
   <ul id="gh_repos">
-    <li class="loading">Status updating&#8230;</li>
+    <li class="loading">Status updating...</li>
   </ul>
   
   <a href="https://github.com/troydm">@troydm</a> on GitHub
@@ -293,6 +251,7 @@ I&#8217;ve even added code to run it as linux daemon thanks to <a href="http://w
   
 </aside>
 
+
     </div>
   </div>
   <footer role="contentinfo"><p>
@@ -307,7 +266,10 @@ I&#8217;ve even added code to run it as linux daemon thanks to <a href="http://w
       var disqus_shortname = 'dgeurkov';
       
         
-        var disqus_script = 'count.js';
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/';
+        var disqus_url = 'http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/';
+        var disqus_script = 'embed.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: torrent | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/torrent/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2013-05-08T21:11:08+04:00</updated>
+  <updated>2013-07-22T23:05:40+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -20,7 +20,7 @@
     <id>http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker</id>
     <content type="html"><![CDATA[<p>Evar wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
 
-<p><a href="http://bittorrent.org/">Bittorrents</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won't consider them here!
+<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won't consider them here!
 So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?</p>
 
 <p>Oh you don't? Snap it's it's so useful that nowadays almost everyone has some kind of NAS that he/she is using for file storage and torrents.

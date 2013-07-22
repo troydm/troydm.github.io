@@ -4,7 +4,7 @@
   <title><![CDATA[Troydm's Blog]]></title>
   <link href="http://troydm.github.io/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2013-05-08T21:11:08+04:00</updated>
+  <updated>2013-07-22T23:05:40+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -14,13 +14,57 @@
 
   
   <entry>
+    <title type="html"><![CDATA[Writting IRC Bot using Perl 5 and POCO::IRC]]></title>
+    <link href="http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/"/>
+    <updated>2013-07-22T21:29:00+04:00</updated>
+    <id>http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc</id>
+    <content type="html"><![CDATA[<p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don&#8217;t.
+It was invented a really long time ago and isn&#8217;t going away anytime soon despite some new generation alternatives poping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
+
+<p>Personally i always have my irc client running (i&#8217;m using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
+who inspire me to try new technologies and learn something different every day. One person, who&#8217;s nick i won&#8217;t name, was always telling me about how awesome <a href="http://perl.org/" title="Perl">Perl</a>
+as a programming language is and how great it&#8217;s potential is thanks to <a href="http://cpan.org" title="CPAN">CPAN</a> that has almost 124k modules for any life situation.
+I always thought he was exaggerating and literally acting like a perl fanboy, but <a href="http://perl.org/" title="Perl">Perl</a> was the first programming language i&#8217;ve learned back in the late 90&#8217;s
+and remembering how frustuating my experience with it was and how cryptic it really was for me do something with it when i was unexperienced and lacked lots of qualities that make up a
+any decent software engineer. Well, time passed, time always passes, and i haven&#8217;t written anything more than quick 50 line server scripts in <a href="http://perl.org/" title="Perl">Perl</a> for almost 13 years.
+I&#8217;ve almost forgotten everything about <a href="http://perl.org/" title="Perl">Perl</a>. Since lately i was having this crazy idea about writing irc bot that could store and execute shell scripts on server
+so i could automate my servers through irc, i thought why not write it in <a href="http://perl.org/" title="Perl">Perl</a>. I&#8217;ve remembered that person who was always bragging about <a href="http://perl.org/" title="Perl">Perl</a>&#8217;s greatness wrote an irc bot in <a href="http://perl.org/" title="Perl">Perl</a>
+using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE::Component::IRC</a> so i&#8217;ve decided to try and use it. It&#8217;s based on really popular <a href="https://metacpan.org/module/POE" title="POE">POE</a> event loop framework which is very easy to learn and use.</p>
+
+<p><img src="http://i.imgur.com/kiqhDBH.jpg" alt="Chobits" /></p>
+
+<p>Before we&#8217;ll start writing our <a href="http://perl.org/" title="Perl">Perl</a> IRC bot we need some way to store configuration for it. Since <a href="http://cpan.org" title="CPAN">CPAN</a> has lots of modules that deal with configuration the choice wasn&#8217;t an easy one but
+i&#8217;ve decided to use <a href="https://metacpan.org/module/YAML">YAML</a> which is module for loading <a href="http://yaml.org" title="YAML">YAML</a> objects into <a href="http://perl.org/" title="Perl">Perl</a> that can work the other way too. <a href="http://yaml.org" title="YAML">YAML</a> is a simple markup language
+that is perfect for storing configuration and it&#8217;s really quick to learn. For loading YAML configuration i&#8217;ve used <strong>LoadFile</strong> function and to store <a href="http://perl.org/" title="Perl">Perl</a> objects back into file i&#8217;ve used <strong>DumpFile</strong> function.
+Just two simple functions that do all the complex work work for me. Since i wanted to store commands in the same file i just used <a href="http://perl.org/" title="Perl">Perl</a>&#8217;s list construct to specify that i&#8217;m loading two seperate <a href="http://yaml.org" title="YAML">YAML</a> documents.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="c1"># Loading configuration </span>
+</span><span class='line'><span class="k">my</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">)</span> <span class="o">=</span> <span class="n">LoadFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">)</span>
+</span><span class='line'>    <span class="o">||</span> <span class="nb">die</span> <span class="s">&quot;invalid configuration file specified&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Storing configuration</span>
+</span><span class='line'><span class="n">DumpFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">,</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
     <title type="html"><![CDATA[Hosting your own remote private torrent tracker]]></title>
     <link href="http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/"/>
     <updated>2013-04-24T22:05:00+04:00</updated>
     <id>http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker</id>
     <content type="html"><![CDATA[<p>Evar wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
 
-<p><a href="http://bittorrent.org/">Bittorrents</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won&#8217;t consider them here!
+<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won&#8217;t consider them here!
 So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?</p>
 
 <p>Oh you don&#8217;t? Snap it&#8217;s it&#8217;s so useful that nowadays almost everyone has some kind of NAS that he/she is using for file storage and torrents.
