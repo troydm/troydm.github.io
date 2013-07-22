@@ -8,7 +8,7 @@ categories: [linux, torrent, c, programming]
 
 Evar wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?
 
-[Bittorrents](http://bittorrent.org/) to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won't consider them here!
+[BitTorrent](http://bittorrent.org/) to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won't consider them here!
 So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?
 
 Oh you don't? Snap it's it's so useful that nowadays almost everyone has some kind of NAS that he/she is using for file storage and torrents.
