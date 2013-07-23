@@ -4,7 +4,7 @@
   <title><![CDATA[Category: irc | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/irc/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2013-07-23T22:39:34+04:00</updated>
+  <updated>2013-07-24T00:52:27+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -52,17 +52,11 @@ Just two simple functions that do all the complex work work for me. Since i want
 <span class='line-number'>7</span>
 <span class='line-number'>8</span>
 <span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
 </pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="sr">&lt;/p&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;h1&gt;</span><span class="n">Loading</span> <span class="n">configuration</span><span class="sr">&lt;/h1&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="sr">&lt;p&gt;</span><span class="k">my</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">)</span> <span class="o">=</span> <span class="n">LoadFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">)</span><span class="sr">&lt;/p&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="sr">&lt;pre&gt;&lt;code&gt;</span><span class="o">||</span> <span class="nb">die</span> <span class="s">&quot;invalid configuration file specified&quot;</span><span class="p">;</span>
-</span><span class='line'><span class="sr">&lt;/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'><span class="sr">&lt;p&gt;</span><span class="k">my</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">)</span> <span class="o">=</span> <span class="n">LoadFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">);</span><span class="sr">&lt;/p&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;h1&gt;</span><span class="n">Storing</span> <span class="n">configuration</span><span class="sr">&lt;/h1&gt;</span>
 </span><span class='line'>

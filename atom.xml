@@ -4,7 +4,7 @@
   <title><![CDATA[Troydm's Blog]]></title>
   <link href="http://troydm.github.io/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2013-07-23T22:39:34+04:00</updated>
+  <updated>2013-07-24T00:52:27+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -48,10 +48,8 @@ Just two simple functions that do all the complex work work for me. Since i want
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
 <span class='line-number'>5</span>
-<span class='line-number'>6</span>
 </pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="c1"># Loading configuration </span>
-</span><span class='line'><span class="k">my</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">)</span> <span class="o">=</span> <span class="n">LoadFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">)</span>
-</span><span class='line'>    <span class="o">||</span> <span class="nb">die</span> <span class="s">&quot;invalid configuration file specified&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">my</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">)</span> <span class="o">=</span> <span class="n">LoadFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">);</span>
 </span><span class='line'>
 </span><span class='line'><span class="c1"># Storing configuration</span>
 </span><span class='line'><span class="n">DumpFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">,</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">));</span>
