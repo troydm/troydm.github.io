@@ -33,8 +33,7 @@ Just two simple functions that do all the complex work work for me. Since i want
 
 {% codeblock lang:perl %}
 # Loading configuration 
-my ($config, $commands) = LoadFile($config_file) 
-    || die "invalid configuration file specified";
+my ($config, $commands) = LoadFile($config_file);
 
 # Storing configuration
 DumpFile($config_file, ($config, $commands));
