@@ -9,8 +9,8 @@
   <meta name="author" content="Dmitry Geurkov">
 
   
-  <meta name="description" content="Some people use IRC to chat, some don&#8217;t.
-It was invented a really long time ago and isn&#8217;t going away anytime soon despite some new &hellip;">
+  <meta name="description" content="Any software developer who worked in financial industry will tell you that there are
+few key requirements to programming applications for real time &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -68,6 +68,210 @@ It was invented a really long time ago and isn&#8217;t going away anytime soon d
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme/">Processing &amp; Broadcasting Financial Data in Scheme</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-04T21:44:00+04:00" pubdate data-updated="true">Sep 4<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Any software developer who worked in financial industry will tell you that there are
+few key requirements to programming applications for real time market. Applications should be as fast as possible and
+they should be as easily modifiable as possible. First requirement is essential since getting and processing information
+takes time and sending processed information takes even additional precious time, and in financial world time equals money.
+Second requirement is determined by constantly changing business rules imposed on data processing.</p>
+
+<p><img src="http://i.imgur.com/OErpvNu.png" alt="(eq? 'money 'power)" /></p>
+
+<p>Correctly choosing programming language for such applications is key to success. Since first requirement already suggests using languages
+that produce native binary executables we might start thinking to use popular languages such as <strong>C</strong>, <strong>C++</strong>. However developing networked applications
+in <strong>C</strong> or <strong>C++</strong> takes more time than in languages such as <strong>Java</strong> or <strong>C#</strong>, and applications developed aren&#8217;t as easy modifiable as it may seem, so these languages
+don&#8217;t comply with our second requirement. What alternatives do we have? Since it&#8217;s financial world and we want our applications to be absolutely correct, we might
+want to choose functional programming language and benefit of their advantages. So we have a choice between popular functional programming languages
+<strong>Haskell</strong>, <strong>OCaml</strong> and <strong>Scheme</strong>. <strong>OCaml</strong> is well known to
+be used by a big financial company <a href="http://janestreet.com/">Janestreet</a> and is a really good choice, it has <strong>ML</strong> like syntax which is really easy to get used to.
+<strong>Haskell</strong> is extremely popular however it&#8217;s laziness implies some overcomplicated
+programming and some performance penalties we don&#8217;t want to have. <strong>Scheme</strong> is very simple language with <strong>Lisp</strong>-like syntax that is very easy to start programming with and it&#8217;s programs
+are very easily modifiable. <strong>Scheme</strong> has many implementations that have it&#8217;s own libraries and it&#8217;s own pros and cons. <strong>Scheme</strong>&#8217;s only downside is that it&#8217;s not statically typed so it doesn&#8217;t catches some obvious
+compile-time errors, but as long as our application works fine everything is ok! Further on let&#8217;s consider that we&#8217;ve chosen <strong>Scheme</strong> as our language. Other languages have it&#8217;s own benefits but for our
+needs it&#8217;s the most suited choice, since we want to start developing as fast as possible. Since we want to produce native binary executables we&#8217;ll limit our choice
+on <a href="http://www.call-cc.org/">Chicken Scheme</a> which produces very efficient binary applications and is very popular.</p>
+
+<p>So let&#8217;s consider our hypothetical but very common situation where we want to quickly develop an application that gets a stream of some data (let&#8217;s imagine it&#8217;s a real time financial market data)
+that we can get by connecting to some arbitrary tcp host:port. The data that we&#8217;ll get will be parsed, processed and will be broadcasted to all clients that will connect to our small application
+using tcp protocol. So we need to develop some small tcp client and broadcasting server black box.</p>
+
+<p><img src="http://i.imgur.com/T4gMsTT.png" alt="black box" /></p>
+
+<p><a href="http://www.call-cc.org/">Chicken Scheme</a> has a system called <a href="http://wiki.call-cc.org/chicken-projects/egg-index-4.html">Eggs</a> which is a common way to distribute community extensions.
+We&#8217;ll be using two extensions to ease our task of developing our application. One is called <a href="http://wiki.call-cc.org/eggref/4/synch">synch</a> which is a set of some useful functions to
+work with concurrent code in <a href="http://www.call-cc.org/">Chicken Scheme</a>. The other one we&#8217;ll be using is called <a href="http://wiki.call-cc.org/eggref/4/mailbox-threads">mailbox-threads</a> which
+is a convenient <strong>Erlang</strong>-like message passing framework. So let&#8217;s install those extension by typing following in our console:</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>chicken-install synch
+</span><span class='line'>chicken-install mailbox-threads
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So let&#8217;s start writing our application. Create a file called <em>myapp.scm</em>. First thing we need to do is load our extensions.
+Also we&#8217;ll be using some functions from <a href="http://srfi.schemers.org/srfi-18/srfi-18.html">srfi-18</a> and <a href="http://srfi.schemers.org/srfi-1/srfi-1.html">srfi-1</a>
+for multi threading and some convenient list data manipulations.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="nf">require-extension</span> <span class="nv">tcp</span> <span class="nv">posix</span> <span class="nv">synch</span> <span class="nv">mailbox-threads</span><span class="p">)</span>
+</span><span class='line'><span class="p">(</span><span class="nf">require-extension</span> <span class="p">(</span><span class="nf">only</span> <span class="nv">srfi-18</span> <span class="nv">make-mutex</span> <span class="nv">make-thread</span> <span class="nv">thread-start!</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="nf">require-extension</span> <span class="p">(</span><span class="nf">only</span> <span class="nv">srfi-1</span> <span class="nv">delete</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First we need a way to get our data and process it. We&#8217;ll be using functions <em>tcp-connect</em> and <em>read-line</em> to connect to our host and read data line by line.
+Also we&#8217;ll define some arbitrary processing function that will not do any processing and just broadcast data. I don&#8217;t want to talk about processing in this post but rather focus
+on getting data and distributing it, so in the end we&#8217;ll have just a simple tcp duplicator example in <strong>Scheme</strong>. But you can do any kind of data processing by modifying
+<em>process-data</em> function.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">connect-to-host</span> <span class="s">&quot;host&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">connect-to-port</span> <span class="mi">1234</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">start-data-feeder</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">handle-exceptions</span> <span class="nv">ex</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">begin </span><span class="p">(</span><span class="nf">print</span> <span class="s">&quot;error occurred while connecting, trying to reconnect&quot;</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">(</span><span class="nf">sleep</span> <span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>        <span class="p">(</span><span class="k">let </span><span class="p">((</span><span class="nf">in</span> <span class="p">(</span><span class="nf">tcp-connect</span> <span class="nv">connect-to-host</span> <span class="nv">connect-to-port</span><span class="p">)))</span>
+</span><span class='line'>            <span class="p">(</span><span class="nf">get-data</span> <span class="nv">in</span><span class="p">)))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">start-data-feeder</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-data</span> <span class="nv">in</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">process-data</span> <span class="p">(</span><span class="nf">read-line</span> <span class="nv">in</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">get-data</span> <span class="nv">in</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">process-data</span> <span class="nv">data</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">broadcast</span> <span class="nv">data</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So we have our data gathering and processing ready, now we need to start a tcp server and broadcast data to all clients.
+We&#8217;ll be using <em>mailboxes</em> list that will contain each client&#8217;s mailbox and we&#8217;ll have a separate mutex to make sure operations
+on <em>mailboxes</em> list are thread-safe.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">mtx</span> <span class="p">(</span><span class="nf">make-mutex</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">mailboxes</span> <span class="o">&#39;</span><span class="p">())</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">broadcast</span> <span class="nv">data</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">synch</span> <span class="nv">mtx</span> <span class="p">(</span><span class="nb">map </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">mailbox</span><span class="p">)</span> <span class="p">(</span><span class="nf">thread-send</span> <span class="nv">mailbox</span> <span class="nv">data</span><span class="p">))</span> <span class="nv">mailboxes</span><span class="p">)))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So let&#8217;s write our tcp broadcasting server. Each connected client will have a his mailbox added to <em>mailboxes</em> list.
+When client will disconnect, his mailbox will be deleted from <em>mailboxes</em> list. We&#8217;ll use <em>tcp-listen</em> and <em>tcp-accept</em> functions to
+listen on port and accept connections on listener. Each client will be processed by separate thread.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">broadcast-on-port</span> <span class="mi">4321</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">start-broadcasting</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">accept-client</span> <span class="p">(</span><span class="nf">tcp-listen</span> <span class="nv">broadcast-on-port</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">accept-client</span> <span class="nv">listener</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">let-values</span> <span class="p">([(</span><span class="nf">in</span> <span class="nv">out</span><span class="p">)</span> <span class="p">(</span><span class="nf">tcp-accept</span> <span class="nv">listener</span><span class="p">)])</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">thread-start!</span> <span class="p">(</span><span class="nf">make-thread</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">lambda </span><span class="p">()</span>
+</span><span class='line'>                <span class="p">(</span><span class="nf">handle-exceptions</span> <span class="nv">ex</span>
+</span><span class='line'>                        <span class="p">(</span><span class="nf">synch</span> <span class="nv">mtx</span> <span class="p">(</span><span class="k">set! </span><span class="nv">mailboxes</span> <span class="p">(</span><span class="nf">delete</span> <span class="p">(</span><span class="nf">current-thread</span><span class="p">)</span> <span class="nv">mailboxes</span><span class="p">)))</span>
+</span><span class='line'>                    <span class="p">(</span><span class="nf">synch</span> <span class="nv">mtx</span> <span class="p">(</span><span class="k">set! </span><span class="nv">mailboxes</span> <span class="p">(</span><span class="nb">cons </span><span class="p">(</span><span class="nf">current-thread</span><span class="p">)</span> <span class="nv">mailboxes</span><span class="p">)))</span>
+</span><span class='line'>                    <span class="p">(</span><span class="nf">process-client</span> <span class="nv">in</span> <span class="nv">out</span><span class="p">))</span>
+</span><span class='line'>                <span class="p">(</span><span class="nb">close-output-port </span><span class="nv">out</span><span class="p">)</span>
+</span><span class='line'>                <span class="p">(</span><span class="nb">close-input-port </span><span class="nv">in</span><span class="p">)))))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">accept-client</span> <span class="nv">listener</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">process-client</span> <span class="nv">in</span> <span class="nv">out</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">write-line</span> <span class="p">(</span><span class="nf">thread-receive</span><span class="p">)</span> <span class="nv">out</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">process-client</span> <span class="nv">in</span> <span class="nv">out</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now only thing left is to start our broadcasting server in separate thread and start feeding it data</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="nf">thread-start!</span> <span class="p">(</span><span class="nf">make-thread</span> <span class="nv">start-broadcasting</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="nf">start-data-feeder</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Pretty neat and simple, isn&#8217;t it :)</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -503,6 +707,10 @@ I&#8217;ve even added code to run it as linux daemon thanks to <a href="http://w
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme/">Processing &amp; Broadcasting Financial Data in Scheme</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writting IRC Bot using Perl 5 and POCO::IRC</a>
