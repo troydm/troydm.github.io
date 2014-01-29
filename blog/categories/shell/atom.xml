@@ -4,7 +4,7 @@
   <title><![CDATA[Category: shell | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/shell/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2014-01-08T23:06:14+04:00</updated>
+  <updated>2014-01-29T23:56:55+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -18,32 +18,35 @@
     <link href="http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/"/>
     <updated>2013-07-22T21:29:00+04:00</updated>
     <id>http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc</id>
-    <content type="html"><![CDATA[<p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don't.
-It was invented a really long time ago and isn't going away anytime soon despite some new generation alternatives poping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
+    <content type="html"><![CDATA[<p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don&rsquo;t.
+It was invented a really long time ago and isn&rsquo;t going away anytime soon despite some new generation alternatives poping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
 
-<p>Personally i always have my irc client running (i'm using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
-who inspire me to try new technologies and learn something different every day. One person, who's nick i won't name, was always telling me about how awesome <a href="http://perl.org/" title="Perl">Perl</a>
-as a programming language is and how great it's potential is thanks to <a href="http://cpan.org" title="CPAN">CPAN</a> that has almost 124k modules for any life situation.
-I always thought he was exaggerating and literally acting like a <a href="http://perl.org/" title="Perl">Perl</a> fanboy. <a href="http://perl.org/" title="Perl">Perl</a> was the first programming language i've learned back in the late 90's
+<p>Personally i always have my irc client running (i&rsquo;m using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
+who inspire me to try new technologies and learn something different every day. One person, who&rsquo;s nick i won&rsquo;t name, was always telling me about how awesome <a href="http://perl.org/" title="Perl">Perl</a>
+as a programming language is and how great it&rsquo;s potential is thanks to <a href="http://cpan.org" title="CPAN">CPAN</a> that has almost 124k modules for any life situation.
+I always thought he was exaggerating and literally acting like a <a href="http://perl.org/" title="Perl">Perl</a> fanboy. <a href="http://perl.org/" title="Perl">Perl</a> was the first programming language i&rsquo;ve learned back in the late 90&rsquo;s
 and remembering how frustuating my experience with it was and how cryptic it really was for me do something with it when i was unexperienced and lacked lots of qualities that make up a
 any decent software engineer i was skeptic about using it again.
-Well, time passed, time always passes, and i haven't written anything more than quick 50 line server scripts in <a href="http://perl.org/" title="Perl">Perl</a> for almost 13 years.
-I've almost forgotten everything about <a href="http://perl.org/" title="Perl">Perl</a>. Since lately i was having this crazy idea about writing irc bot that could store and execute shell scripts on server
-so i could automate my servers through irc, i thought why not write it in <a href="http://perl.org/" title="Perl">Perl</a>. I've remembered that person who was always bragging about <a href="http://perl.org/" title="Perl">Perl</a>'s greatness wrote an irc bot in <a href="http://perl.org/" title="Perl">Perl</a>
-using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE::Component::IRC</a> so i've decided to try and use the same framework for my bot. It's based on really popular <a href="https://metacpan.org/module/POE" title="POE">POE</a> event loop framework which is very easy to learn and use.
+Well, time passed, time always passes, and i haven&rsquo;t written anything more than quick 50 line server scripts in <a href="http://perl.org/" title="Perl">Perl</a> for almost 13 years.
+I&rsquo;ve almost forgotten everything about <a href="http://perl.org/" title="Perl">Perl</a>. Since lately i was having this crazy idea about writing irc bot that could store and execute shell scripts on server
+so i could automate my servers through irc, i thought why not write it in <a href="http://perl.org/" title="Perl">Perl</a>. I&rsquo;ve remembered that person who was always bragging about <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s greatness wrote an irc bot in <a href="http://perl.org/" title="Perl">Perl</a>
+using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE::Component::IRC</a> so i&rsquo;ve decided to try and use the same framework for my bot. It&rsquo;s based on really popular <a href="https://metacpan.org/module/POE" title="POE">POE</a> event loop framework which is very easy to learn and use.
 <strong>Matt Cashner</strong> wrote a really good introduction article called <a href="http://www.perl.com/pub/2004/07/02/poeintro.html">Application Design with POE</a></p>
 
+<!-- more -->
+
+
 <p>The whole code for my bot is just 500 lines and is available from this repository <a href="https://github.com/troydm/shellbot">shellbot</a>.
-I'm going to walk through a key concepts that are essential for writing an irc bot in <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POCO::IRC</a> using my bot's source code as a reference.</p>
+I&rsquo;m going to walk through a key concepts that are essential for writing an irc bot in <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POCO::IRC</a> using my bot&rsquo;s source code as a reference.</p>
 
 <p><img src="http://i.imgur.com/kiqhDBH.jpg" alt="Chobits" /></p>
 
-<p>Before we'll start our <a href="http://perl.org/" title="Perl">Perl</a> IRC bot we need some way to store configuration for it. Since <a href="http://cpan.org" title="CPAN">CPAN</a> has lots of modules that deal with configuration the choice wasn't an easy one but
-i've decided to use <a href="https://metacpan.org/module/YAML">YAML</a> which is module for loading <a href="http://yaml.org" title="YAML">YAML</a> data into <a href="http://perl.org/" title="Perl">Perl</a> that can work the other way too. <a href="http://yaml.org" title="YAML">YAML</a> is a simple markup language
-that is perfect for storing configuration and it's really quick to learn. For loading YAML configuration i've used <strong>LoadFile</strong> function and to store <a href="http://perl.org/" title="Perl">Perl</a> data back into file i've used <strong>DumpFile</strong> function.
-Just two simple functions that do all the complex work work for me. Since i wanted to store commands in the same file i just used <a href="http://perl.org/" title="Perl">Perl</a>'s list construct to specify that i'm loading two seperate <a href="http://yaml.org" title="YAML">YAML</a> documents.</p>
+<p>Before we&rsquo;ll start our <a href="http://perl.org/" title="Perl">Perl</a> IRC bot we need some way to store configuration for it. Since <a href="http://cpan.org" title="CPAN">CPAN</a> has lots of modules that deal with configuration the choice wasn&rsquo;t an easy one but
+i&rsquo;ve decided to use <a href="https://metacpan.org/module/YAML">YAML</a> which is module for loading <a href="http://yaml.org" title="YAML">YAML</a> data into <a href="http://perl.org/" title="Perl">Perl</a> that can work the other way too. <a href="http://yaml.org" title="YAML">YAML</a> is a simple markup language
+that is perfect for storing configuration and it&rsquo;s really quick to learn. For loading YAML configuration i&rsquo;ve used <strong>LoadFile</strong> function and to store <a href="http://perl.org/" title="Perl">Perl</a> data back into file i&rsquo;ve used <strong>DumpFile</strong> function.
+Just two simple functions that do all the complex work work for me. Since i wanted to store commands in the same file i just used <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s list construct to specify that i&rsquo;m loading two seperate <a href="http://yaml.org" title="YAML">YAML</a> documents.</p>
 
-<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -63,10 +66,10 @@ Just two simple functions that do all the complex work work for me. Since i want
 </span><span class='line'><span class="sr">&lt;p&gt;</span><span class="n">DumpFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">,</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">));</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
-<p>Next step is to create POE Session and start event loop. Note that since my module is named Shellbot i need to specify it otherwise event loop won't be able to call functions.
+<p>Next step is to create POE Session and start event loop. Note that since my module is named Shellbot i need to specify it otherwise event loop won&rsquo;t be able to call functions.
 Each of this functions are called by <a href="https://metacpan.org/module/POE" title="POE">POE</a> when specified events occur and all the bot logic is handled by those functions.</p>
 
-<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -92,13 +95,13 @@ Each of this functions are called by <a href="https://metacpan.org/module/POE" t
 
 <p>First event that is executed after the POE event loop starts is <strong>_start</strong> event so we need to initialize bot
 state in that event. Also since <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POCO::IRC</a> comes with some essential plugins and is modular by itself we can take advantage of this.
-Instead of manually making bot reconnect when it looses connection with server i've used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::Connector">Connector</a> plugin.
+Instead of manually making bot reconnect when it looses connection with server i&rsquo;ve used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::Connector">Connector</a> plugin.
 If we want our bot to automaticly join some channel we can use <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::AutoJoin">AutoJoin</a> plugin.
-And to easily handle when someone addresses bot i've used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::BotAddressed">BotAddressed</a> plugin.
+And to easily handle when someone addresses bot i&rsquo;ve used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::BotAddressed">BotAddressed</a> plugin.
 Since i wanted my bot to handle commands i could have used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::BotCommand">BotCommand</a> plugin however i wanted my bot
-to have two modes of commands so i've decided to write bot command handling functions manually.</p>
+to have two modes of commands so i&rsquo;ve decided to write bot command handling functions manually.</p>
 
-<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -129,11 +132,11 @@ to have two modes of commands so i've decided to write bot command handling func
 </span><span class='line'><span class="sr">&lt;h1&gt;</span><span class="n">Connector</span> <span class="n">plugin</span><span class="sr">&lt;/h1&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;p&gt;</span><span class="nv">$heap</span><span class="o">-&gt;</span><span class="p">{</span><span class="n">connector</span><span class="p">}</span> <span class="o">=</span> <span class="nn">POE::Component::IRC::Plugin::</span><span class="n">Connector</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">();</span>
-</span><span class='line'><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">plugin_add</span><span class="p">(</span> <span class="s">&#39;Connector&#39;</span> <span class="o">=&gt;</span> <span class="nv">$heap</span><span class="o">-&gt;</span><span class="p">{</span><span class="n">connector</span><span class="p">}</span> <span class="p">);</span><span class="sr">&lt;/p&gt;</span>
+</span><span class='line'><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">plugin_add</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">Connector</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span> <span class="o">=&gt;</span> <span class="nv">$heap</span><span class="o">-&gt;</span><span class="p">{</span><span class="n">connector</span><span class="p">}</span> <span class="p">);</span><span class="sr">&lt;/p&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;h1&gt;</span><span class="n">Autojoin</span> <span class="n">plugin</span><span class="sr">&lt;/h1&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="sr">&lt;p&gt;</span><span class="k">if</span><span class="p">(</span><span class="nb">exists</span><span class="p">(</span><span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="s">&#39;channels&#39;</span><span class="p">})</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="s">&#39;channels&#39;</span><span class="p">}</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">){</span><span class="sr">&lt;/p&gt;</span>
+</span><span class='line'><span class="sr">&lt;p&gt;</span><span class="k">if</span><span class="p">(</span><span class="nb">exists</span><span class="p">(</span><span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">channels</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;})</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span> <span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">channels</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;}</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">){</span><span class="sr">&lt;/p&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;pre&gt;&lt;code&gt;</span><span class="nv">$irc</span><span class="o">-&amp;</span><span class="ow">gt</span><span class="p">;</span><span class="n">plugin_add</span><span class="p">(</span><span class="s">&#39;AutoJoin&#39;</span><span class="p">,</span> <span class="nn">POE::Component::IRC::Plugin::</span><span class="n">AutoJoin</span><span class="o">-&amp;</span><span class="ow">gt</span><span class="p">;</span><span class="k">new</span><span class="p">(</span>
 </span><span class='line'>   <span class="n">Channels</span> <span class="o">=&amp;</span><span class="ow">gt</span><span class="p">;</span> <span class="nv">$config</span><span class="o">-&amp;</span><span class="ow">gt</span><span class="p">;{</span><span class="s">&#39;channels&#39;</span><span class="p">}</span>
@@ -144,16 +147,16 @@ to have two modes of commands so i've decided to write bot command handling func
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;h1&gt;</span><span class="n">BotAddressed</span> <span class="n">plugin</span><span class="sr">&lt;/h1&gt;</span>
 </span><span class='line'>
-</span><span class='line'><span class="sr">&lt;p&gt;</span><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">plugin_add</span><span class="p">(</span> <span class="s">&#39;BotAddressed&#39;</span><span class="p">,</span> <span class="nn">POE::Component::IRC::Plugin::</span><span class="n">BotAddressed</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">()</span> <span class="p">);</span><span class="sr">&lt;/p&gt;</span>
+</span><span class='line'><span class="sr">&lt;p&gt;</span><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">plugin_add</span><span class="p">(</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">BotAddressed</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;,</span> <span class="nn">POE::Component::IRC::Plugin::</span><span class="n">BotAddressed</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">()</span> <span class="p">);</span><span class="sr">&lt;/p&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;p&gt;</span><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">yield</span><span class="p">(</span><span class="n">register</span> <span class="o">=&gt;</span> <span class="sx">qw(join msg connected)</span><span class="p">);</span>
-</span><span class='line'><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">yield</span><span class="p">(</span><span class="s">&#39;connect&#39;</span><span class="p">);</span>
+</span><span class='line'><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">yield</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="nb">connect</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;);</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
-<p>Since bot can be addressed both using a private message and refering him on a channel i've decided to handle
+<p>Since bot can be addressed both using a private message and refering him on a channel i&rsquo;ve decided to handle
 both <strong>irc_msg</strong> and <strong>irc_bot_addressed</strong> events uniformly in <strong>msg_received</strong> function</p>
 
-<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -207,10 +210,10 @@ both <strong>irc_msg</strong> and <strong>irc_bot_addressed</strong> events unif
 </span><span class='line'><span class="sr">&lt;p&gt;</span><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
-<p>Before bot accepts a command we need some way to check if person who is issuing a command is authorized to do so. I'm doing a simple check of full irc name
+<p>Before bot accepts a command we need some way to check if person who is issuing a command is authorized to do so. I&rsquo;m doing a simple check of full irc name
 that can be specified in configuration list option <strong>authorizations</strong></p>
 
-<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -226,11 +229,11 @@ that can be specified in configuration list option <strong>authorizations</stron
 </span><span class='line'><span class="sr">&lt;p&gt;</span><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
-<p>All that is left is to match commands in <strong>msg_recieved</strong> using <a href="http://perl.org/" title="Perl">Perl</a>'s <a href="http://perldoc.perl.org/perlre.html">regex</a>. This part is just a long series of bot command logic
-and <strong>if</strong> <strong>elsif</strong> <strong>else</strong> statements so i won't reference them here. Also the key function is <strong>run_job</strong> which executes prestored shell script. It creates a temporary file that
+<p>All that is left is to match commands in <strong>msg_recieved</strong> using <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s <a href="http://perldoc.perl.org/perlre.html">regex</a>. This part is just a long series of bot command logic
+and <strong>if</strong> <strong>elsif</strong> <strong>else</strong> statements so i won&rsquo;t reference them here. Also the key function is <strong>run_job</strong> which executes prestored shell script. It creates a temporary file that
 is executed using a shell</p>
 
-<p><div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -257,8 +260,8 @@ is executed using a shell</p>
 <span class='line-number'>25</span>
 <span class='line-number'>26</span>
 <span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="k">my</span> <span class="nv">$program</span> <span class="o">=</span> <span class="s">&quot;/bin/bash&quot;</span><span class="p">;</span>
-</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="nb">exists</span><span class="p">(</span><span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="s">&#39;shell&#39;</span><span class="p">})){</span><span class="sr">&lt;/p&gt;</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="k">my</span> <span class="nv">$program</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="sr">/bin/</span><span class="n">bash</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;;</span>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="nb">exists</span><span class="p">(</span><span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">shell</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;})){</span><span class="sr">&lt;/p&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;pre&gt;&lt;code&gt;</span><span class="nv">$program</span> <span class="o">=</span> <span class="nv">$config</span><span class="o">-&amp;</span><span class="ow">gt</span><span class="p">;{</span><span class="s">&#39;shell&#39;</span><span class="p">};</span>
 </span><span class='line'><span class="sr">&lt;/code&gt;&lt;/pre&gt;</span>
@@ -270,7 +273,7 @@ is executed using a shell</p>
 </span><span class='line'><span class="sr">&lt;p&gt;</span><span class="k">my</span> <span class="nv">$script</span> <span class="o">=</span> <span class="nn">File::</span><span class="n">Temp</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">();</span>
 </span><span class='line'><span class="k">my</span> <span class="nv">$scriptname</span> <span class="o">=</span> <span class="nv">$script</span><span class="o">-&gt;</span><span class="n">filename</span><span class="p">;</span>
 </span><span class='line'><span class="nb">chmod</span> <span class="mo">0700</span><span class="p">,</span> <span class="nv">$script</span><span class="p">;</span>
-</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="nb">ref</span> <span class="nv">$cmd</span> <span class="ow">eq</span> <span class="s">&#39;ARRAY&#39;</span><span class="p">){</span><span class="sr">&lt;/p&gt;</span>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="nb">ref</span> <span class="nv">$cmd</span> <span class="ow">eq</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="p">;</span><span class="n">ARRAY</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;){</span><span class="sr">&lt;/p&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;pre&gt;&lt;code&gt;</span><span class="k">foreach</span> <span class="k">my</span> <span class="nv">$line</span> <span class="p">(</span><span class="nv">@</span><span class="p">{</span> <span class="nv">$cmd</span> <span class="p">}){</span>
 </span><span class='line'>    <span class="k">print</span> <span class="nv">$script</span> <span class="s">&quot;$line\n&quot;</span><span class="p">;</span>
@@ -283,12 +286,12 @@ is executed using a shell</p>
 </span><span class='line'><span class="sr">&lt;/code&gt;&lt;/pre&gt;</span>
 </span><span class='line'>
 </span><span class='line'><span class="sr">&lt;p&gt;</span><span class="p">}</span>
-</span><span class='line'><span class="nv">$program</span> <span class="o">.=</span> <span class="s">&quot; $scriptname $args&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="nv">$program</span> <span class="o">.=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span> <span class="nv">$scriptname</span> <span class="nv">$args</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;;</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
 <p>Shell execution is handled by <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE</a> using <a href="https://metacpan.org/module/POE::Wheel::Run">POE::Wheel::Run</a>
 and output from shell is received on <strong>got_job_stdout</strong> and <strong>got_job_stderr</strong> functions
-<div class='bogus-wrapper'><notextile><figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
 <span class='line-number'>4</span>
@@ -312,54 +315,54 @@ and output from shell is received on <strong>got_job_stdout</strong> and <strong
 </span><span class='line'><span class="sr">&lt;p&gt;</span><span class="p">);</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
-<p>That's all there is to it. To install and trying it out just look through a <a href="https://github.com/troydm/shellbot/blob/master/README.md">readme</a></p>
+<p>That&rsquo;s all there is to it. To install and trying it out just look through a <a href="https://github.com/troydm/shellbot/blob/master/README.md">readme</a></p>
 
 <p>Offcourse making a temporary shell script and executing it is generally unsafe. Also there is security concern
-that bot can be somehow hacked and commanded by unathorized nick but i'm not sure how can this be done without changing vhost.
+that bot can be somehow hacked and commanded by unathorized nick but i&rsquo;m not sure how can this be done without changing vhost.
 That is why i called this bot a potentially unsafe. If anyone can find any security holes please do pull request or just email me patch.</p>
 
-<p>To make this bot little more secure we need to make him connect to irc using SSL. For this i'll walk through a general steps for configuring
+<p>To make this bot little more secure we need to make him connect to irc using SSL. For this i&rsquo;ll walk through a general steps for configuring
 <a href="https://www.freenode.net/certfp/">CertFP</a> and generating self signed certificate for <a href="https://www.freenode.net/">Freenode</a> as an example.
-First step is to register your bot's nick with <a href="https://blog.freenode.net/2007/03/nickserv-is-your-friend/">NickServ</a>.
+First step is to register your bot&rsquo;s nick with <a href="https://blog.freenode.net/2007/03/nickserv-is-your-friend/">NickServ</a>.
 Choose a nickname for your bot and start it up. Ask your bot to register with NickServ by private messaging him on irc.
 <div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ REGISTER nickservpass email@address.com</span></code></pre></td></tr></table></div></figure></notextile></div>
-Shortly you'll receive an email verification that will include verification code, privately message your bot again to verify your registration
+</pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ REGISTER nickservpass &lt;a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#x65;&#x6d;&#97;&#x69;&#x6c;&#x40;&#97;&#x64;&#100;&#114;&#101;&#115;&#115;&#x2e;&#x63;&#111;&#x6d;">&#x65;&#109;&#x61;&#x69;&#108;&#64;&#97;&#100;&#x64;&#x72;&#101;&#115;&#x73;&#x2e;&#x63;&#x6f;&#x6d;&lt;/a></span></code></pre></td></tr></table></div></figure></notextile></div>
+Shortly you&rsquo;ll receive an email verification that will include verification code, privately message your bot again to verify your registration
 <div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ VERIFY REGISTER botnick verificationcode</span></code></pre></td></tr></table></div></figure></notextile></div>
-Now your bot's nick is registered with NickServ so edit your configuration file and uncomment nickserv line to specify your nickservpass that will
+Now your bot&rsquo;s nick is registered with NickServ so edit your configuration file and uncomment nickserv line to specify your nickservpass that will
 be used each time your bot will connect to server for authorization of your nick</p>
 
-<p>Now we'll generate a self signed certificate for SSL, i've used <a href="https://www.freenode.net/certfp/makecert.shtml">this</a> manual for reference.
+<p>Now we&rsquo;ll generate a self signed certificate for SSL, i&rsquo;ve used <a href="https://www.freenode.net/certfp/makecert.shtml">this</a> manual for reference.
 <div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>umask 077
 </span><span class='line'>openssl req -newkey rsa:2048 -days 730 -x509 -keyout botnick.key -out botnick.crt</span></code></pre></td></tr></table></div></figure></notextile></div>
-You'll be asked some questions and after that openssl will generate two files, your bot's certificate and key.
+You&rsquo;ll be asked some questions and after that openssl will generate two files, your bot&rsquo;s certificate and key.
 For CertFP to work we need a fingerprint of your key and certificate
 <div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>cat botnick.crt botnick.key > botnick.pem
-</span><span class='line'>openssl x509 -sha1 -noout -fingerprint -in botnick.pem | sed -e 's/&lt;sup>.*=//;s/://g;y/ABCDEF/abcdef/'&lt;/sup></span></code></pre></td></tr></table></div></figure></notextile></div>
-After this you'll get a fingerprint that you need to add to NickServ
+</span><span class='line'>openssl x509 -sha1 -noout -fingerprint -in botnick.pem | sed -e &rsquo;s/^.*=//;s/://g;y/ABCDEF/abcdef/&lsquo;</span></code></pre></td></tr></table></div></figure></notextile></div>
+After this you&rsquo;ll get a fingerprint that you need to add to NickServ
 <div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ CERT ADD fingerprint</span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
 <p>Now all that is left is to specify in configuration that we are connecting using SSL certificate and key.
-Just uncomment <strong>sslcrt</strong> and <strong>sslkey</strong> options and specify full path to your bot's certificate and key.
-Also don't forget to change the port since we need to specify an SSL port instead of usual one, just specify
+Just uncomment <strong>sslcrt</strong> and <strong>sslkey</strong> options and specify full path to your bot&rsquo;s certificate and key.
+Also don&rsquo;t forget to change the port since we need to specify an SSL port instead of usual one, just specify
 <strong>6697</strong>, <strong>7000</strong> or <strong>7070</strong> and restart your bot to enjoy fully secured connection to irc server.
-Also i've used <a href="https://metacpan.org/module/DETI/Proc-Daemon-0.14/lib/Proc/Daemon.pod">Proc::Daemon</a> for running this bot
+Also i&rsquo;ve used <a href="https://metacpan.org/module/DETI/Proc-Daemon-0.14/lib/Proc/Daemon.pod">Proc::Daemon</a> for running this bot
 as daemon so you can uncomment <strong>daemon</strong> and <strong>log</strong> options to run it as daemon process.</p>
 
 <p>So what did i learned from writing this small irc bot in <a href="http://perl.org/" title="Perl">Perl</a>?
 Now the first most common mistake i was always making when coding in <a href="http://perl.org/" title="Perl">Perl</a> was the difference between list and array, so
 I recommend this article by <strong>Mike Friedman</strong> <a href="http://friedo.com/blog/2013/07/arrays-vs-lists-in-perl">Arrays vs. Lists in Perl</a>
-that helped me a lot. Also dereferncing was the second most common mistake i had, until i've read this article
-<a href="http://perlmeme.org/howtos/using_perl/dereferencing.html">Dereferencing in Perl</a>. But the biggest thing i've learned was that <a href="http://perl.org/" title="Perl">Perl</a>
-as a scripting language is really easy to use and powerfull despite some people claiming it's dead, it's still alive and it's doing
+that helped me a lot. Also dereferncing was the second most common mistake i had, until i&rsquo;ve read this article
+<a href="http://perlmeme.org/howtos/using_perl/dereferencing.html">Dereferencing in Perl</a>. But the biggest thing i&rsquo;ve learned was that <a href="http://perl.org/" title="Perl">Perl</a>
+as a scripting language is really easy to use and powerfull despite some people claiming it&rsquo;s dead, it&rsquo;s still alive and it&rsquo;s doing
 just <a href="http://www.nntp.perl.org/group/perl.perl5.porters/2013/07/msg204905.html">fine</a>!
-Just look how many modules are released on <a href="http://cpan.org" title="CPAN">CPAN</a> everyday! And it's really really fun to code in, so everyone should try learning and using it!!!</p>
+Just look how many modules are released on <a href="http://cpan.org" title="CPAN">CPAN</a> everyday! And it&rsquo;s really really fun to code in, so everyone should try learning and using it!!!</p>
 ]]></content>
   </entry>
   

@@ -1,0 +1,1274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: fpc | Troydm's Blog]]></title>
+  <link href="http://troydm.github.io/blog/categories/fpc/atom.xml" rel="self"/>
+  <link href="http://troydm.github.io/"/>
+  <updated>2014-01-29T23:56:55+04:00</updated>
+  <id>http://troydm.github.io/</id>
+  <author>
+    <name><![CDATA[Dmitry Geurkov]]></name>
+    <email><![CDATA[d.geurkov@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Making 30 years old Pascal code run again]]></title>
+    <link href="http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again/"/>
+    <updated>2014-01-26T22:48:00+04:00</updated>
+    <id>http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again</id>
+    <content type="html"><![CDATA[<p>Recently i&rsquo;ve been interested in <a href="https://en.wikipedia.org/wiki/Logic_programming">Logic Programming</a>, notably in learning <a href="https://en.wikipedia.org/wiki/Prolog">Prolog</a>
+so i&rsquo;m in a process of reading two great books, <a href="http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/">Programming for Artificial Intelligence</a> and
+<a href="http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/">The Art of Prolog</a>. If you want to get a quick feel of <em>Prolog</em> i recommend you take a look at
+Bernardo Pires&rsquo;s <a href="https://bernardopires.com/2013/10/try-logic-programming-a-gentle-introduction-to-prolog/">Gentle Introduction to Prolog</a> and <a href="http://prologomenon.wordpress.com/">Prologomenon</a> blog.
+To put it simply <em>Prolog</em> is all about logic, deduction and backtracking</p>
+
+<p><img src="http://i.imgur.com/Mwlmvyk.jpg" alt="Sherlock Loli" /></p>
+
+<p>While browsing <a href="http://reddit.com/r/prolog">/r/prolog</a> i&rsquo;ve stumbbled upon <a href="https://sites.google.com/site/prologforprogrammers/">Prolog for Programmers</a> originally published in 1985, an old book indeed
+and honestly sometimes hard to follow. I can&rsquo;t recommend it as a starter book about <em>Prolog</em> but it&rsquo;s still quite interesting to read. However it has a whole two chapters describing implementation of
+<em>Prolog</em> interpreter which is quite a complex task and sparkled my interest in continuing reading this book. Authors provide source code of two version of Prolog interpreter,
+the one they originally wrote in <em>Pascal</em> back in 1983 and it&rsquo;s port to <em>C</em> in 2013 which, as stated on their website, was done because they couldn&rsquo;t compile old <em>Pascal</em> code
+with <a href="http://www.freepascal.org/">Free Pascal Compiler</a> and because&hellip; well <em>Pascal</em> is quite out of fashion nowadays. Couldn&rsquo;t compile?! Well, challenge accepted!</p>
+
+<!-- more -->
+
+
+<p>We&rsquo;ll start with <em>toy.p</em> (original source code) and <em>syskernel</em> (boot file written in toy&rsquo;s original prolog syntax) file. Let&rsquo;s create a <em>Makefile</em> and try compiling the software with <em>fpc</em>.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;h6>#&lt;/h6>
+</span><span class='line'>
+</span><span class='line'>&lt;p>FPC=/usr/bin/fpc
+</span><span class='line'>FPCFLAGS=-O3&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;h6>#&lt;/h6>
+</span><span class='line'>
+</span><span class='line'>&lt;p>all: toy&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>toy: toy.p&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;pre>&lt;code>    $(FPC) $(FPCFLAGS) $&lt;
+</span><span class='line'>&lt;/code>&lt;/pre>
+</span><span class='line'>
+</span><span class='line'>&lt;h6>#&lt;/h6>
+</span><span class='line'>
+</span><span class='line'>&lt;p>clean:&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;pre>&lt;code>    rm -f toy*.o
+</span><span class='line'>&lt;/code>&lt;/pre>
+</span><span class='line'>
+</span><span class='line'>&lt;p>distclean: clean&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;pre>&lt;code>    rm -f toy
+</span><span class='line'>&lt;/code>&lt;/pre>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s try running <em>make</em></p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/usr/bin/fpc -O3  toy.p
+</span><span class='line'>Free Pascal Compiler version 2.4.0-2ubuntu1.10.04 [2011/06/17] for i386
+</span><span class='line'>Copyright &copy; 1993-2009 by Florian Klaempfl
+</span><span class='line'>Target OS: Linux for i386
+</span><span class='line'>Compiling toy.p
+</span><span class='line'>toy.p(260,1) Error: Goto statements aren&rsquo;t allowed between different procedures
+</span><span class='line'>toy.p(306,1) Error: Goto statements aren&rsquo;t allowed between different procedures
+</span><span class='line'>toy.p(348,18) Error: Incompatible type for arg no. 2: Got &ldquo;Array[1..35] Of Char&rdquo;, expected &ldquo;LongInt&rdquo;
+</span><span class='line'>toy.p(351,20) Error: Incompatible type for arg no. 2: Got &ldquo;Array[1..35] Of Char&rdquo;, expected &ldquo;LongInt&rdquo;
+</span><span class='line'>toy.p(453,21) Fatal: Syntax error, &ldquo;identifier&rdquo; expected but &ldquo;STRING&rdquo; found
+</span><span class='line'>Fatal: Compilation aborted</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>First two errors are <em>goto</em> statement related, let&rsquo;s see the source code.
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">label</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">;</span>  <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">error</span> <span class="nb">halt</span> <span class="err">&amp;</span><span class="n">amp</span><span class="o">;</span> <span class="n">almost</span><span class="o">-</span><span class="n">fatal</span> <span class="n">error</span> <span class="n">recovery</span> <span class="n">only</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">halt</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">this</span> <span class="n">might</span> <span class="n">be</span> <span class="k">implementation</span><span class="o">-</span><span class="n">dependent</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">begin</span>   <span class="nb">writeln</span><span class="o">;</span>   <span class="nb">writeln</span> <span class="p">(</span> <span class="err">&amp;</span><span class="n">lsquo</span><span class="o">;</span> <span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;</span><span class="n">toyprolog</span> <span class="n">aborted</span><span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;</span><span class="err">&amp;</span><span class="n">rsquo</span><span class="o">;</span><span class="p">)</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">goto</span> <span class="mi">1</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="nl">code</span><span class="o">&gt;&lt;/</span><span class="nl">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">;&lt;/</span><span class="nl">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">errror</span> <span class="p">(</span> <span class="n">id</span> <span class="o">:</span> <span class="n">errid</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="nb">writeln</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="nb">write</span> <span class="p">(</span> <span class="s">&#39; ++++++error : &#39;</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">....</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="n">id</span> <span class="k">in</span> <span class="p">[</span> <span class="n">ctovflw</span><span class="o">,</span> <span class="n">protovflw</span><span class="o">,</span> <span class="n">loadfile</span><span class="o">,</span> <span class="n">sysinit</span><span class="o">,</span> <span class="n">usereof</span> <span class="p">]</span> <span class="k">then</span> <span class="nb">halt</span>
+</span><span class='line'>    <span class="k">else</span> <span class="k">goto</span> <span class="mi">2</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="nl">code</span><span class="o">&gt;&lt;/</span><span class="nl">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">;&lt;/</span><span class="nl">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">p</span><span class="o">&gt;</span><span class="k">begin</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;*</span> <span class="n">toy</span> <span class="n">prolog</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;**</span><span class="p">)</span><span class="o">&lt;/</span><span class="nl">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">pre</span><span class="o">&gt;&lt;</span><span class="nl">code</span><span class="o">&gt;</span>    <span class="n">initvars</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">loadsyskernel</span><span class="o">;</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="nl">code</span><span class="o">&gt;&lt;/</span><span class="nl">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">p</span><span class="o">&gt;</span><span class="mi">2</span><span class="o">:</span>      <span class="k">repeat</span>  <span class="n">readtogoal</span> <span class="p">(</span> <span class="n">goalstmnt</span><span class="o">,</span> <span class="n">ngoalvars</span> <span class="p">)</span><span class="o">;&lt;/</span><span class="nl">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">pre</span><span class="o">&gt;&lt;</span><span class="nl">code</span><span class="o">&gt;</span>            <span class="n">resolve</span> <span class="p">(</span> <span class="n">goalstmnt</span><span class="o">,</span> <span class="n">ngoalvars</span> <span class="p">)</span>
+</span><span class='line'>    <span class="k">until</span> <span class="n">terminate</span><span class="o">;</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="nl">code</span><span class="o">&gt;&lt;/</span><span class="nl">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">p</span><span class="o">&gt;</span><span class="mi">1</span><span class="o">:</span>      <span class="nb">closefile</span> <span class="p">(</span> <span class="k">true</span> <span class="p">)</span><span class="o">;</span>   <span class="nb">closefile</span> <span class="p">(</span> <span class="k">false</span> <span class="p">)</span>
+</span><span class='line'><span class="k">end</span><span class="o">.&lt;/</span><span class="nl">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nl">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Well, apparently back in the 80&rsquo;s you could jump between procedures in <em>Pascal</em> using <em>goto</em> statements, some primitive try/catch mechanism.
+Now that&rsquo;s a neat thing but unfortunetly no, you can&rsquo;t do that anymore. Let&rsquo;s change this code to use exceptions. One thing to note we can substitute
+<em>goto 1</em> with <em>halt(1)</em> which will make our program exit on critical error. Also we&rsquo;ll need to add <em>-S2</em> flag to <em>FPCFLAGS</em> variable in <em>Makefile</em> since we&rsquo;ll
+be using exceptions which is related to classes mechanism of <em>Pascal</em>. And just to be sure we don&rsquo;t override any system procedures we&rsquo;ll rename our <em>halt</em> to
+<em>haltsys</em></p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">use</span> <span class="n">sysutils</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">type</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="o">....</span>
+</span><span class='line'>    <span class="n">error</span> <span class="o">=</span> <span class="k">class</span><span class="p">(</span><span class="n">Exception</span><span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">haltsys</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">this</span> <span class="n">might</span> <span class="n">be</span> <span class="k">implementation</span><span class="o">-</span><span class="n">dependent</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">begin</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="nb">writeln</span><span class="o">;</span>   <span class="nb">writeln</span> <span class="p">(</span> <span class="s">&#39; ******toyprolog aborted******&#39;</span><span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="nb">halt</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">errror</span> <span class="p">(</span> <span class="n">id</span> <span class="o">:</span> <span class="n">errid</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="nb">writeln</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="nb">write</span> <span class="p">(</span> <span class="s">&#39; ++++++error : &#39;</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">....</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">id</span> <span class="k">in</span> <span class="p">[</span> <span class="n">ctovflw</span><span class="o">,</span> <span class="n">protovflw</span><span class="o">,</span> <span class="n">loadfile</span><span class="o">,</span> <span class="n">sysinit</span><span class="o">,</span> <span class="n">usereof</span> <span class="p">]</span> <span class="k">then</span> <span class="n">haltsys</span>
+</span><span class='line'>    <span class="k">else</span> <span class="k">raise</span> <span class="n">error</span><span class="o">.</span><span class="n">create</span><span class="p">(</span> <span class="s">&#39;error&#39;</span> <span class="p">)</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;&lt;</span><span class="n">strong</span><span class="o">&gt;*</span> <span class="n">toy</span> <span class="n">prolog</span> <span class="o">&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;&lt;/</span><span class="n">strong</span><span class="o">&gt;**</span><span class="p">)</span>
+</span><span class='line'><span class="k">begin</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">initvars</span><span class="o">;</span>
+</span><span class='line'><span class="n">loadsyskernel</span><span class="o">;</span>
+</span><span class='line'><span class="k">repeat</span>
+</span><span class='line'>    <span class="k">try</span>
+</span><span class='line'>        <span class="n">readtogoal</span> <span class="p">(</span> <span class="n">goalstmnt</span><span class="o">,</span> <span class="n">ngoalvars</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">resolve</span> <span class="p">(</span> <span class="n">goalstmnt</span><span class="o">,</span> <span class="n">ngoalvars</span> <span class="p">)</span>
+</span><span class='line'>    <span class="k">except</span> <span class="k">on</span> <span class="n">error</span> <span class="k">do</span> <span class="k">end</span><span class="o">;</span>
+</span><span class='line'><span class="k">until</span> <span class="n">terminate</span><span class="o">;</span>
+</span><span class='line'><span class="nb">closefile</span> <span class="p">(</span> <span class="k">true</span> <span class="p">)</span><span class="o">;</span>   <span class="nb">closefile</span> <span class="p">(</span> <span class="k">false</span> <span class="p">)</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">.&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s try running <em>make</em> again</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/usr/bin/fpc -O3 -S2 toy.p
+</span><span class='line'>Free Pascal Compiler version 2.4.0-2ubuntu1.10.04 [2011/06/17] for i386
+</span><span class='line'>Copyright &copy; 1993-2009 by Florian Klaempfl
+</span><span class='line'>Target OS: Linux for i386
+</span><span class='line'>Compiling toy.p
+</span><span class='line'>toy.p(349,18) Error: Incompatible type for arg no. 2: Got &ldquo;Array[1..35] Of Char&rdquo;, expected &ldquo;LongInt&rdquo;
+</span><span class='line'>toy.p(352,20) Error: Incompatible type for arg no. 2: Got &ldquo;Array[1..35] Of Char&rdquo;, expected &ldquo;LongInt&rdquo;
+</span><span class='line'>toy.p(454,21) Fatal: Syntax error, &ldquo;identifier&rdquo; expected but &ldquo;STRING&rdquo; found</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Good, now <em>goto</em> related error is gone and next we have is something bizzare, let&rsquo;s see the source code.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">openfile</span> <span class="p">(</span> <span class="kp">name</span> <span class="o">:</span> <span class="n">ctx</span><span class="o">;</span>  <span class="n">forinput</span> <span class="o">:</span> <span class="kt">boolean</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">open</span> <span class="n">the</span> <span class="k">file</span> <span class="p">(</span><span class="n">si</span> <span class="k">or</span> <span class="n">so</span> <span class="n">according</span> <span class="k">to</span> <span class="mi">2</span><span class="n">nd</span> <span class="n">parameter</span><span class="p">)</span>
+</span><span class='line'>   <span class="n">whose</span> <span class="kp">name</span> <span class="k">is</span> <span class="n">given</span> <span class="n">by</span> <span class="n">a</span> <span class="k">string</span> <span class="k">in</span> <span class="n">character</span> <span class="n">table</span><span class="o">.</span>
+</span><span class='line'>   <span class="n">a</span> <span class="k">file</span> <span class="k">is</span> <span class="n">opened</span> <span class="n">rewound</span><span class="o">.</span> <span class="k">if</span> <span class="n">a</span> <span class="n">previous</span> <span class="k">file</span> <span class="k">is</span> <span class="n">open</span><span class="o">,</span> <span class="n">it</span> <span class="k">is</span> <span class="n">closed</span><span class="o">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">const</span>  <span class="nb">ln</span> <span class="o">=</span> <span class="mi">35</span><span class="o">;</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="k">for</span> <span class="n">RSX</span><span class="o">-</span><span class="mi">11</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">var</span>   <span class="n">nm</span> <span class="o">:</span> <span class="k">array</span> <span class="p">[</span> <span class="mi">1</span><span class="o">..</span><span class="n">ln</span> <span class="p">]</span> <span class="k">of</span> <span class="kt">char</span><span class="o">;</span>   <span class="n">k</span> <span class="o">:</span> <span class="mi">1</span><span class="o">..</span><span class="n">ln</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="n">k</span><span class="o">:=</span> <span class="mi">1</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">while</span> <span class="p">(</span> <span class="n">k</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="nb">ln</span> <span class="p">)</span> <span class="k">and</span> <span class="p">(</span> <span class="n">ct</span> <span class="p">[</span> <span class="n">name</span> <span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="nb">chr</span> <span class="p">(</span> <span class="n">eos</span> <span class="p">)</span> <span class="p">)</span> <span class="k">do</span> <span class="k">begin</span>
+</span><span class='line'>    <span class="n">nm</span> <span class="p">[</span> <span class="n">k</span> <span class="p">]</span> <span class="o">:=</span>  <span class="n">ct</span> <span class="p">[</span> <span class="n">name</span> <span class="p">]</span><span class="o">;</span>   <span class="n">name</span><span class="o">:=</span> <span class="n">name</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>   <span class="n">k</span><span class="o">:=</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'><span class="k">end</span><span class="o">;</span>
+</span><span class='line'><span class="k">if</span> <span class="n">ct</span> <span class="p">[</span> <span class="n">name</span> <span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="nb">chr</span> <span class="p">(</span> <span class="n">eos</span> <span class="p">)</span> <span class="k">then</span> <span class="n">errror</span> <span class="p">(</span> <span class="n">longfilename</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="k">for</span> <span class="n">k</span><span class="o">:=</span> <span class="n">k</span> <span class="k">to</span> <span class="nb">ln</span> <span class="k">do</span> <span class="n">nm</span> <span class="p">[</span> <span class="n">k</span> <span class="p">]</span> <span class="o">:=</span> <span class="s">&#39; &#39;</span><span class="o">;</span>
+</span><span class='line'><span class="nb">closefile</span> <span class="p">(</span> <span class="n">forinput</span> <span class="p">)</span><span class="o">;</span>               <span class="cm">(* only 1 file per stream *)</span>
+</span><span class='line'><span class="k">if</span> <span class="n">forinput</span> <span class="k">then</span> <span class="k">begin</span>
+</span><span class='line'>    <span class="nb">reset</span> <span class="p">(</span> <span class="n">si</span><span class="o">,</span> <span class="n">nm</span> <span class="p">)</span><span class="o">;</span>    <span class="n">seeing</span><span class="o">:=</span> <span class="k">true</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span> <span class="k">begin</span>
+</span><span class='line'>    <span class="nb">rewrite</span> <span class="p">(</span> <span class="n">so</span><span class="o">,</span> <span class="n">nm</span> <span class="p">)</span><span class="o">;</span>    <span class="n">telling</span><span class="o">:=</span> <span class="k">true</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">solinesize</span><span class="o">:=</span> <span class="mi">0</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">openfile</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Well apparently <em>reset</em> and <em>rewrite</em> procedures don&rsquo;t accept file name as second argument anymore,
+instead we need to first <em>assign</em> file name and then open it for reading.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">openfile</span> <span class="p">(</span> <span class="kp">name</span> <span class="o">:</span> <span class="n">ctx</span><span class="o">;</span>  <span class="n">forinput</span> <span class="o">:</span> <span class="kt">boolean</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">open</span> <span class="n">the</span> <span class="k">file</span> <span class="p">(</span><span class="n">si</span> <span class="k">or</span> <span class="n">so</span> <span class="n">according</span> <span class="k">to</span> <span class="mi">2</span><span class="n">nd</span> <span class="n">parameter</span><span class="p">)</span>
+</span><span class='line'>   <span class="n">whose</span> <span class="kp">name</span> <span class="k">is</span> <span class="n">given</span> <span class="n">by</span> <span class="n">a</span> <span class="k">string</span> <span class="k">in</span> <span class="n">character</span> <span class="n">table</span><span class="o">.</span>
+</span><span class='line'>   <span class="n">a</span> <span class="k">file</span> <span class="k">is</span> <span class="n">opened</span> <span class="n">rewound</span><span class="o">.</span> <span class="k">if</span> <span class="n">a</span> <span class="n">previous</span> <span class="k">file</span> <span class="k">is</span> <span class="n">open</span><span class="o">,</span> <span class="n">it</span> <span class="k">is</span> <span class="n">closed</span><span class="o">.</span>  <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">const</span>  <span class="nb">ln</span> <span class="o">=</span> <span class="mi">35</span><span class="o">;</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="k">for</span> <span class="n">RSX</span><span class="o">-</span><span class="mi">11</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">var</span>   <span class="n">nm</span> <span class="o">:</span> <span class="k">array</span> <span class="p">[</span> <span class="mi">1</span><span class="o">..</span><span class="n">ln</span> <span class="p">]</span> <span class="k">of</span> <span class="kt">char</span><span class="o">;</span>   <span class="n">k</span> <span class="o">:</span> <span class="mi">1</span><span class="o">..</span><span class="n">ln</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="n">k</span><span class="o">:=</span> <span class="mi">1</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">while</span> <span class="p">(</span> <span class="n">k</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="nb">ln</span> <span class="p">)</span> <span class="k">and</span> <span class="p">(</span> <span class="n">ct</span> <span class="p">[</span> <span class="n">name</span> <span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="nb">chr</span> <span class="p">(</span> <span class="n">eos</span> <span class="p">)</span> <span class="p">)</span> <span class="k">do</span> <span class="k">begin</span>
+</span><span class='line'>    <span class="n">nm</span> <span class="p">[</span> <span class="n">k</span> <span class="p">]</span> <span class="o">:=</span>  <span class="n">ct</span> <span class="p">[</span> <span class="n">name</span> <span class="p">]</span><span class="o">;</span>   <span class="n">name</span><span class="o">:=</span> <span class="n">name</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>   <span class="n">k</span><span class="o">:=</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'><span class="k">end</span><span class="o">;</span>
+</span><span class='line'><span class="k">if</span> <span class="n">ct</span> <span class="p">[</span> <span class="n">name</span> <span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="nb">chr</span> <span class="p">(</span> <span class="n">eos</span> <span class="p">)</span> <span class="k">then</span> <span class="n">errror</span> <span class="p">(</span> <span class="n">longfilename</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="k">for</span> <span class="n">k</span><span class="o">:=</span> <span class="n">k</span> <span class="k">to</span> <span class="nb">ln</span> <span class="k">do</span> <span class="n">nm</span> <span class="p">[</span> <span class="n">k</span> <span class="p">]</span> <span class="o">:=</span> <span class="s">&#39; &#39;</span><span class="o">;</span>
+</span><span class='line'><span class="nb">closefile</span> <span class="p">(</span> <span class="n">forinput</span> <span class="p">)</span><span class="o">;</span>               <span class="cm">(* only 1 file per stream *)</span>
+</span><span class='line'><span class="k">if</span> <span class="n">forinput</span> <span class="k">then</span> <span class="k">begin</span>
+</span><span class='line'>        <span class="n">assign</span><span class="p">(</span><span class="n">si</span><span class="o">,</span> <span class="n">nm</span><span class="p">)</span><span class="o">;</span>
+</span><span class='line'>        <span class="nb">reset</span> <span class="p">(</span> <span class="n">si</span> <span class="p">)</span><span class="o">;</span>    <span class="n">seeing</span><span class="o">:=</span> <span class="k">true</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span> <span class="k">begin</span>
+</span><span class='line'>        <span class="n">assign</span><span class="p">(</span><span class="n">so</span><span class="o">,</span> <span class="n">nm</span><span class="p">)</span><span class="o">;</span>
+</span><span class='line'>        <span class="nb">rewrite</span> <span class="p">(</span> <span class="n">so</span> <span class="p">)</span><span class="o">;</span>    <span class="n">telling</span><span class="o">:=</span> <span class="k">true</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">solinesize</span><span class="o">:=</span> <span class="mi">0</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">openfile</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s try running <em>make</em> again</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>/usr/bin/fpc -O3 -S2 toy.p
+</span><span class='line'>Free Pascal Compiler version 2.4.0-2ubuntu1.10.04 [2011/06/17] for i386
+</span><span class='line'>Copyright &copy; 1993-2009 by Florian Klaempfl
+</span><span class='line'>Target OS: Linux for i386
+</span><span class='line'>Compiling toy.p
+</span><span class='line'>toy.p(456,21) Fatal: Syntax error, &ldquo;identifier&rdquo; expected but &ldquo;STRING&rdquo; found&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s see what we have here</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">charlast</span> <span class="p">(</span> <span class="k">string</span> <span class="o">:</span> <span class="n">ctx</span> <span class="p">)</span>  <span class="o">:</span> <span class="n">ctx</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">locate</span> <span class="n">the</span> <span class="n">last</span> <span class="n">character</span> <span class="p">(</span><span class="k">except</span> <span class="n">eos</span><span class="p">)</span> <span class="k">of</span> <span class="n">this</span> <span class="k">string</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">begin</span>   <span class="k">while</span>  <span class="n">ct</span> <span class="p">[</span> <span class="k">string</span> <span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;&gt;</span> <span class="nb">chr</span> <span class="p">(</span> <span class="n">eos</span> <span class="p">)</span>  <span class="k">do</span> <span class="k">string</span><span class="o">:=</span> <span class="k">string</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">charlast</span><span class="o">:=</span> <span class="k">string</span> <span class="o">-</span> <span class="mi">1</span>     <span class="cm">(*correct because lowest string not empty*)</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>We can&rsquo;t use <em>string</em> as identifier since it&rsquo;s used as a type keyword nowadays so let&rsquo;s change that</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">charlast</span> <span class="p">(</span> <span class="nb">str</span> <span class="o">:</span> <span class="n">ctx</span> <span class="p">)</span>  <span class="o">:</span> <span class="n">ctx</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">locate</span> <span class="n">the</span> <span class="n">last</span> <span class="n">character</span> <span class="p">(</span><span class="k">except</span> <span class="n">eos</span><span class="p">)</span> <span class="k">of</span> <span class="n">this</span> <span class="nb">str</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">begin</span>   <span class="k">while</span>  <span class="n">ct</span> <span class="p">[</span> <span class="nb">str</span> <span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;&gt;</span> <span class="nb">chr</span> <span class="p">(</span> <span class="n">eos</span> <span class="p">)</span>  <span class="k">do</span> <span class="nb">str</span><span class="o">:=</span> <span class="nb">str</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="n">charlast</span><span class="o">:=</span> <span class="nb">str</span> <span class="o">-</span> <span class="mi">1</span>     <span class="cm">(*correct because lowest str not empty*)</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s try running <em>make</em> again</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>/usr/bin/fpc -O3 -S2 toy.p
+</span><span class='line'>Free Pascal Compiler version 2.4.0-2ubuntu1.10.04 [2011/06/17] for i386
+</span><span class='line'>Copyright &copy; 1993-2009 by Florian Klaempfl
+</span><span class='line'>Target OS: Linux for i386
+</span><span class='line'>Compiling toy.p
+</span><span class='line'>toy.p(922,7) Fatal: Syntax error, &ldquo;identifier&rdquo; expected but &ldquo;is&rdquo; found&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Ahh, same identifier problem but now with <em>is</em> keyword, let&rsquo;s quickly change that too.
+Next is same problem but now with <em>class</em> keyword, okey fixed that one too. And again <em>is</em> keyword related problems, fixed.</p>
+
+<p>And now running <em>make</em> again</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>/usr/bin/fpc -O3 -S2 toy.p
+</span><span class='line'>Free Pascal Compiler version 2.4.0-2ubuntu1.10.04 [2011/06/17] for i386
+</span><span class='line'>Copyright &copy; 1993-2009 by Florian Klaempfl
+</span><span class='line'>Target OS: Linux for i386
+</span><span class='line'>Compiling toy.p
+</span><span class='line'>toy.p(1951,36) Error: Identifier not found &ldquo;success&rdquo;
+</span><span class='line'>toy.p(1956,10) Error: Identifier not found &ldquo;id&rdquo;
+</span><span class='line'>toy.p(1957,18) Error: Constant and CASE types do not match
+</span><span class='line'>toy.p(1957,27) Error: Identifier not found &ldquo;success&rdquo;
+</span><span class='line'>toy.p(1958,8) Error: Constant and CASE types do not match
+</span><span class='line'>toy.p(1959,18) Error: Constant and CASE types do not match
+</span><span class='line'>toy.p(1960,18) Error: Constant and CASE types do not match
+</span><span class='line'>&hellip;&hellip;..&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>ZOMFG, tons of errors :( no worries no worries let&rsquo;s see the code!</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">sysroutcall</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="p">(</span> <span class="n">id</span> <span class="o">:</span> <span class="n">sysroutid</span><span class="o">;</span>  <span class="k">var</span> <span class="n">success</span><span class="o">,</span> <span class="n">stop</span> <span class="o">:</span> <span class="kt">boolean</span> <span class="p">)</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">perform</span> <span class="n">a</span> <span class="n">system</span> <span class="n">routine</span> <span class="n">call</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">var</span>   <span class="n">k</span> <span class="o">:</span> <span class="n">nsysparam</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="n">syserror</span><span class="o">:=</span> <span class="k">false</span><span class="o">;</span>   <span class="n">success</span><span class="o">:=</span> <span class="k">true</span><span class="o">;</span>     <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">might</span> <span class="n">change</span> <span class="n">yet</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">for</span> <span class="n">k</span><span class="o">:=</span> <span class="mi">1</span> <span class="k">to</span> <span class="n">getarity</span> <span class="p">(</span> <span class="n">ccall</span> <span class="p">)</span> <span class="k">do</span> <span class="k">begin</span>
+</span><span class='line'>    <span class="n">spar</span> <span class="p">[</span> <span class="n">k</span> <span class="p">]</span> <span class="o">:=</span>  <span class="n">argument</span> <span class="p">(</span> <span class="n">ccall</span><span class="o">,</span> <span class="n">ancenv</span><span class="o">,</span> <span class="n">k</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">isint</span><span class="p">(</span> <span class="n">spar</span> <span class="p">[</span> <span class="n">k</span> <span class="p">]</span> <span class="p">)</span> <span class="k">then</span> <span class="n">sparv</span> <span class="p">[</span> <span class="n">k</span> <span class="p">]</span><span class="o">:=</span> <span class="n">intval</span><span class="p">(</span> <span class="n">spar</span> <span class="p">[</span> <span class="n">k</span> <span class="p">]</span> <span class="p">)</span>
+</span><span class='line'><span class="k">end</span><span class="o">;</span>
+</span><span class='line'><span class="k">case</span> <span class="n">id</span> <span class="k">of</span>
+</span><span class='line'><span class="n">idfail</span>          <span class="o">:</span> <span class="n">success</span><span class="o">:=</span> <span class="k">false</span><span class="o">;</span>      <span class="cm">(* keep this as first  *)</span>
+</span><span class='line'><span class="n">idtag</span> <span class="o">,</span>
+</span><span class='line'><span class="n">idcall</span>          <span class="o">:</span> <span class="o">;</span>             <span class="cm">(* never called ! (cf. control) *)</span>
+</span><span class='line'><span class="n">idslash</span>         <span class="o">:</span> <span class="n">slash</span><span class="o">;</span>
+</span><span class='line'><span class="n">idtagcut</span>        <span class="o">:</span> <span class="n">tagcut</span> <span class="p">(</span> <span class="n">success</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="n">idtagfail</span>       <span class="o">:</span> <span class="n">tagfail</span> <span class="p">(</span> <span class="n">success</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="n">idtagexit</span>       <span class="o">:</span> <span class="n">tagexit</span> <span class="p">(</span> <span class="n">success</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="n">idancestor</span>      <span class="o">:</span> <span class="n">ancestor</span> <span class="p">(</span> <span class="n">success</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'> <span class="o">.........</span>
+</span><span class='line'><span class="k">end</span> <span class="cm">(*case*)</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">sysroutcall</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Ehh&hellip; why is the procedure argument block commented? Wait we have another <em>sysroutcall</em>
+defined in a file previously which is&hellip;</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">sysroutcall</span> <span class="p">(</span> <span class="n">id</span> <span class="o">:</span> <span class="n">sysroutid</span><span class="o">;</span>  <span class="k">var</span> <span class="n">success</span><span class="o">,</span> <span class="n">stop</span> <span class="o">:</span> <span class="kt">boolean</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="kp">forward</span><span class="o">;</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;</span><span class="err">&amp;</span><span class="n">mdash</span><span class="o">;&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Ahh it&rsquo;s just a forward definition, well aparently nowadays if you are defining a forward
+definition that doesn&rsquo;t mean you don&rsquo;t need to specify procedure arguments again.
+Let&rsquo;s uncomment the arguments and try running <em>make</em> again.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>/usr/bin/fpc -O3 -S2 toy.p
+</span><span class='line'>Free Pascal Compiler version 2.4.0-2ubuntu1.10.04 [2011/06/17] for i386
+</span><span class='line'>Copyright &copy; 1993-2009 by Florian Klaempfl
+</span><span class='line'>Target OS: Linux for i386
+</span><span class='line'>Compiling toy.p
+</span><span class='line'>toy.p(2132,33) Fatal: Syntax error, &ldquo;:&rdquo; expected but &ldquo;;&rdquo; found
+</span><span class='line'>Fatal: Compilation aborted&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s see the code</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">rdterm</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span>  <span class="o">:</span> <span class="kt">integer</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="nb">read</span> <span class="n">a</span> <span class="n">term</span> <span class="k">and</span> <span class="n">return</span> <span class="n">a</span> <span class="n">prot</span> <span class="k">for</span> <span class="n">a</span> <span class="n">non</span><span class="o">-</span><span class="k">var</span> <span class="k">or</span> <span class="n">a</span> <span class="n">negated</span> <span class="n">offset</span> <span class="k">for</span> <span class="n">a</span> <span class="k">var</span><span class="o">.</span>
+</span><span class='line'>   <span class="n">sequences</span> <span class="n">processed</span> <span class="n">recursively</span> <span class="k">to</span> <span class="n">allow</span> <span class="n">proper</span> <span class="n">ground</span> <span class="n">prot</span> <span class="n">treatment</span><span class="o">.</span>   <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">var</span>   <span class="nb">sign</span> <span class="o">:</span> <span class="o">-</span><span class="mi">1</span><span class="o">..</span><span class="mi">1</span><span class="o">;</span>   <span class="n">varoff</span> <span class="o">:</span> <span class="n">varnumb</span><span class="o">;</span>   <span class="n">prot</span> <span class="o">:</span> <span class="kt">integer</span><span class="o">;</span>   <span class="n">dot</span> <span class="o">:</span> <span class="n">protx</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="n">skipbl</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Function result type is commented, probably a typo, let&rsquo;s uncomment it and run <em>make</em> again.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>/usr/bin/fpc -O3 -S2 toy.p
+</span><span class='line'>Free Pascal Compiler version 2.4.0-2ubuntu1.10.04 [2011/06/17] for i386
+</span><span class='line'>Copyright &copy; 1993-2009 by Florian Klaempfl
+</span><span class='line'>Target OS: Linux for i386
+</span><span class='line'>Compiling toy.p
+</span><span class='line'>toy.p(2138,22) Warning: Function result variable does not seem to initialized
+</span><span class='line'>toy.p(2280,26) Error: Incompatible type for arg no. 2: Got &ldquo;Constant String&rdquo;, expected &ldquo;LongInt&rdquo;
+</span><span class='line'>toy.p(2314,9) Error: Label used but not defined &ldquo;2&rdquo;
+</span><span class='line'>toy.p(2314,9) Fatal: Syntax error, &ldquo;;&rdquo; expected but &ldquo;REPEAT&rdquo; found
+</span><span class='line'>Fatal: Compilation aborted&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>That&rsquo;s a weird error. Let&rsquo;s examine the code.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">rdterm</span>   <span class="o">:</span> <span class="kt">integer</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="nb">read</span> <span class="n">a</span> <span class="n">term</span> <span class="k">and</span> <span class="n">return</span> <span class="n">a</span> <span class="n">prot</span> <span class="k">for</span> <span class="n">a</span> <span class="n">non</span><span class="o">-</span><span class="k">var</span> <span class="k">or</span> <span class="n">a</span> <span class="n">negated</span> <span class="n">offset</span> <span class="k">for</span> <span class="n">a</span> <span class="k">var</span><span class="o">.</span>
+</span><span class='line'>   <span class="n">sequences</span> <span class="n">processed</span> <span class="n">recursively</span> <span class="k">to</span> <span class="n">allow</span> <span class="n">proper</span> <span class="n">ground</span> <span class="n">prot</span> <span class="n">treatment</span><span class="o">.</span>   <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">var</span>   <span class="nb">sign</span> <span class="o">:</span> <span class="o">-</span><span class="mi">1</span><span class="o">..</span><span class="mi">1</span><span class="o">;</span>   <span class="n">varoff</span> <span class="o">:</span> <span class="n">varnumb</span><span class="o">;</span>   <span class="n">prot</span> <span class="o">:</span> <span class="kt">integer</span><span class="o">;</span>   <span class="n">dot</span> <span class="o">:</span> <span class="n">protx</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="n">skipbl</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="nb">writeln</span><span class="p">(</span><span class="s">&#39;rdterm &#39;</span><span class="o">,</span><span class="n">cch</span><span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="k">if</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;(&#39;</span> <span class="k">then</span> <span class="k">begin</span>         <span class="cm">(* eg.  a . (b . c) . d *)</span>
+</span><span class='line'>    <span class="n">rd</span><span class="o">;</span>   <span class="n">prot</span><span class="o">:=</span> <span class="n">rdterm</span><span class="o">;</span>   <span class="n">skipbl</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">cch</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="s">&#39;)&#39;</span> <span class="k">then</span> <span class="n">synterr</span><span class="o">;</span>   <span class="n">rd</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'><span class="k">if</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;_&#39;</span> <span class="k">then</span> <span class="k">begin</span>                 <span class="cm">(* a dummy variable *)</span>
+</span><span class='line'>    <span class="n">rd</span><span class="o">;</span>   <span class="n">prot</span><span class="o">:=</span> <span class="n">dumvarx</span>            <span class="cm">(* treated as non-var here *)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'><span class="k">if</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;:&#39;</span> <span class="k">then</span> <span class="k">begin</span>                 <span class="cm">(* a variable *)</span>
+</span><span class='line'>    <span class="n">rd</span><span class="o">;</span>   <span class="n">varoff</span><span class="o">:=</span> <span class="n">rddigits</span><span class="o">;</span>   <span class="n">prot</span><span class="o">:=</span> <span class="o">-</span> <span class="n">varoff</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">varoff</span> <span class="o">+</span> <span class="mi">1</span> <span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="n">nclvars</span> <span class="k">then</span> <span class="n">nclvars</span><span class="o">:=</span> <span class="n">varoff</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;+&#39;</span> <span class="p">)</span> <span class="k">or</span> <span class="p">(</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;-&#39;</span> <span class="p">)</span> <span class="k">or</span> <span class="p">(</span> <span class="n">cc</span> <span class="p">[</span><span class="n">cch</span><span class="p">]</span> <span class="o">=</span> <span class="n">cdigit</span> <span class="p">)</span> <span class="k">then</span> <span class="k">begin</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;-&#39;</span> <span class="k">then</span> <span class="nb">sign</span><span class="o">:=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="nb">sign</span><span class="o">:=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">cc</span> <span class="p">[</span> <span class="n">cch</span> <span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="n">cdigit</span> <span class="k">then</span> <span class="n">rd</span><span class="o">;</span>
+</span><span class='line'>    <span class="cm">(* number itself processed as positive :  this</span>
+</span><span class='line'><span class="cm">       causes loss of smallest integer in two&#39;s complement *)</span>
+</span><span class='line'>    <span class="n">prot</span><span class="o">:=</span> <span class="n">newintprot</span> <span class="p">(</span> <span class="nb">sign</span> <span class="o">*</span> <span class="n">rddigits</span> <span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span> <span class="k">begin</span>
+</span><span class='line'>        <span class="n">prot</span><span class="o">:=</span> <span class="n">rdnonvarint</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">skipbl</span>
+</span><span class='line'>    <span class="k">end</span><span class="o">;</span>
+</span><span class='line'><span class="k">if</span> <span class="n">cch</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="s">&#39;.&#39;</span> <span class="k">then</span> <span class="n">rdterm</span><span class="o">:=</span> <span class="n">prot</span>
+</span><span class='line'><span class="k">else</span> <span class="k">begin</span>                      <span class="cm">(* a sequence, as it turns out *)</span>
+</span><span class='line'>    <span class="n">dot</span><span class="o">:=</span> <span class="n">initprot</span> <span class="p">(</span> <span class="n">std</span> <span class="p">[</span><span class="n">atmdot</span><span class="p">]</span> <span class="p">)</span><span class="o">;</span>   <span class="n">mkarg</span> <span class="p">(</span> <span class="n">dot</span><span class="o">,</span> <span class="n">car</span><span class="o">,</span> <span class="n">prot</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">rd</span><span class="o">;</span>   <span class="n">skipcombl</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">mkarg</span> <span class="p">(</span> <span class="n">dot</span><span class="o">,</span> <span class="n">cdr</span><span class="o">,</span> <span class="n">rdterm</span> <span class="p">)</span><span class="o">;</span>   <span class="n">rdterm</span><span class="o">:=</span> <span class="n">wrapprot</span> <span class="p">(</span> <span class="n">dot</span> <span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">rdterm</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Seems like <em>fpc</em> can&rsquo;t distinguesh between a recursive function call and a function result value,
+so let&rsquo;s add some brackets for function calls.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">function</span> <span class="nf">rdterm</span>   <span class="o">:</span> <span class="kt">integer</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="nb">read</span> <span class="n">a</span> <span class="n">term</span> <span class="k">and</span> <span class="n">return</span> <span class="n">a</span> <span class="n">prot</span> <span class="k">for</span> <span class="n">a</span> <span class="n">non</span><span class="o">-</span><span class="k">var</span> <span class="k">or</span> <span class="n">a</span> <span class="n">negated</span> <span class="n">offset</span> <span class="k">for</span> <span class="n">a</span> <span class="k">var</span><span class="o">.</span>
+</span><span class='line'>   <span class="n">sequences</span> <span class="n">processed</span> <span class="n">recursively</span> <span class="k">to</span> <span class="n">allow</span> <span class="n">proper</span> <span class="n">ground</span> <span class="n">prot</span> <span class="n">treatment</span><span class="o">.</span>   <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">var</span>   <span class="nb">sign</span> <span class="o">:</span> <span class="o">-</span><span class="mi">1</span><span class="o">..</span><span class="mi">1</span><span class="o">;</span>   <span class="n">varoff</span> <span class="o">:</span> <span class="n">varnumb</span><span class="o">;</span>   <span class="n">prot</span> <span class="o">:</span> <span class="kt">integer</span><span class="o">;</span>   <span class="n">dot</span> <span class="o">:</span> <span class="n">protx</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="n">skipbl</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="nb">writeln</span><span class="p">(</span><span class="s">&#39;rdterm &#39;</span><span class="o">,</span><span class="n">cch</span><span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="k">if</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;(&#39;</span> <span class="k">then</span> <span class="k">begin</span>         <span class="cm">(* eg.  a . (b . c) . d *)</span>
+</span><span class='line'>    <span class="n">rd</span><span class="o">;</span>   <span class="n">prot</span><span class="o">:=</span> <span class="n">rdterm</span><span class="p">()</span><span class="o">;</span>   <span class="n">skipbl</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">cch</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="s">&#39;)&#39;</span> <span class="k">then</span> <span class="n">synterr</span><span class="o">;</span>   <span class="n">rd</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'><span class="k">if</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;_&#39;</span> <span class="k">then</span> <span class="k">begin</span>                 <span class="cm">(* a dummy variable *)</span>
+</span><span class='line'>    <span class="n">rd</span><span class="o">;</span>   <span class="n">prot</span><span class="o">:=</span> <span class="n">dumvarx</span>            <span class="cm">(* treated as non-var here *)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'><span class="k">if</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;:&#39;</span> <span class="k">then</span> <span class="k">begin</span>                 <span class="cm">(* a variable *)</span>
+</span><span class='line'>    <span class="n">rd</span><span class="o">;</span>   <span class="n">varoff</span><span class="o">:=</span> <span class="n">rddigits</span><span class="o">;</span>   <span class="n">prot</span><span class="o">:=</span> <span class="o">-</span> <span class="n">varoff</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">varoff</span> <span class="o">+</span> <span class="mi">1</span> <span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="n">nclvars</span> <span class="k">then</span> <span class="n">nclvars</span><span class="o">:=</span> <span class="n">varoff</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;+&#39;</span> <span class="p">)</span> <span class="k">or</span> <span class="p">(</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;-&#39;</span> <span class="p">)</span> <span class="k">or</span> <span class="p">(</span> <span class="n">cc</span> <span class="p">[</span><span class="n">cch</span><span class="p">]</span> <span class="o">=</span> <span class="n">cdigit</span> <span class="p">)</span> <span class="k">then</span> <span class="k">begin</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">cch</span> <span class="o">=</span> <span class="s">&#39;-&#39;</span> <span class="k">then</span> <span class="nb">sign</span><span class="o">:=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">else</span> <span class="nb">sign</span><span class="o">:=</span> <span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">cc</span> <span class="p">[</span> <span class="n">cch</span> <span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="n">cdigit</span> <span class="k">then</span> <span class="n">rd</span><span class="o">;</span>
+</span><span class='line'>    <span class="cm">(* number itself processed as positive :  this</span>
+</span><span class='line'><span class="cm">       causes loss of smallest integer in two&#39;s complement *)</span>
+</span><span class='line'>    <span class="n">prot</span><span class="o">:=</span> <span class="n">newintprot</span> <span class="p">(</span> <span class="nb">sign</span> <span class="o">*</span> <span class="n">rddigits</span> <span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">else</span> <span class="k">begin</span>
+</span><span class='line'>        <span class="n">prot</span><span class="o">:=</span> <span class="n">rdnonvarint</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">skipbl</span>
+</span><span class='line'>    <span class="k">end</span><span class="o">;</span>
+</span><span class='line'><span class="k">if</span> <span class="n">cch</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="s">&#39;.&#39;</span> <span class="k">then</span> <span class="n">rdterm</span><span class="o">:=</span> <span class="n">prot</span>
+</span><span class='line'><span class="k">else</span> <span class="k">begin</span>                      <span class="cm">(* a sequence, as it turns out *)</span>
+</span><span class='line'>    <span class="n">dot</span><span class="o">:=</span> <span class="n">initprot</span> <span class="p">(</span> <span class="n">std</span> <span class="p">[</span><span class="n">atmdot</span><span class="p">]</span> <span class="p">)</span><span class="o">;</span>   <span class="n">mkarg</span> <span class="p">(</span> <span class="n">dot</span><span class="o">,</span> <span class="n">car</span><span class="o">,</span> <span class="n">prot</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">rd</span><span class="o">;</span>   <span class="n">skipcombl</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">mkarg</span> <span class="p">(</span> <span class="n">dot</span><span class="o">,</span> <span class="n">cdr</span><span class="o">,</span> <span class="n">rdterm</span><span class="p">()</span> <span class="p">)</span><span class="o">;</span>   <span class="n">rdterm</span><span class="o">:=</span> <span class="n">wrapprot</span> <span class="p">(</span> <span class="n">dot</span> <span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">rdterm</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>/usr/bin/fpc -O3 -S2 toy.p
+</span><span class='line'>Free Pascal Compiler version 2.4.0-2ubuntu1.10.04 [2011/06/17] for i386
+</span><span class='line'>Copyright &copy; 1993-2009 by Florian Klaempfl
+</span><span class='line'>Target OS: Linux for i386
+</span><span class='line'>Compiling toy.p
+</span><span class='line'>toy.p(2280,26) Error: Incompatible type for arg no. 2: Got &ldquo;Constant String&rdquo;, expected &ldquo;LongInt&rdquo;
+</span><span class='line'>toy.p(2322) Fatal: There were 1 errors compiling module, stopping
+</span><span class='line'>Fatal: Compilation aborted&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Ahh we are getting closer to the end, same <em>reset</em> related error, let&rsquo;s fix it by adding <em>assign</em>
+and run <em>make</em> again.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>/usr/bin/fpc -O3 -S2 toy.p
+</span><span class='line'>Free Pascal Compiler version 2.4.0-2ubuntu1.10.04 [2011/06/17] for i386
+</span><span class='line'>Copyright &copy; 1993-2009 by Florian Klaempfl
+</span><span class='line'>Target OS: Linux for i386
+</span><span class='line'>Compiling toy.p
+</span><span class='line'>Linking toy
+</span><span class='line'>/usr/bin/ld: warning: link.res contains output sections; did you forget -T?
+</span><span class='line'>2322 lines compiled, 0.3 sec&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>And we did it! Congratulations, it compiles. Let&rsquo;s try running <em>toy</em> executable!</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>bash$ ./toy
+</span><span class='line'>Toy-Prolog listening:
+</span><span class='line'>?&ndash; X=1.
+</span><span class='line'>X = 1
+</span><span class='line'>;
+</span><span class='line'>no
+</span><span class='line'>?&ndash; display(&lsquo;Hello World!&rsquo;), nl.
+</span><span class='line'>Segmentation fault&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Well it runs, but function call crashes the toy prolog interpreter.
+Let&rsquo;s investigate this issue using <em>gdb</em> debugger.
+We&rsquo;ll need to compile code with <em>-g</em> flag to do actual debugging so just add
+it to your <em>FPCFLAGS</em> variable in <em>Makefile</em></p>
+
+<p>Now let&rsquo;s start debugging</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>bash$ gdb ./toy
+</span><span class='line'>GNU gdb (GDB) 7.1-ubuntu
+</span><span class='line'>Copyright &copy; 2010 Free Software Foundation, Inc.
+</span><span class='line'>License GPLv3+: GNU GPL version 3 or later &lt;a href="http://gnu.org/licenses/gpl.html">http://gnu.org/licenses/gpl.html&lt;/a>
+</span><span class='line'>(gdb) run
+</span><span class='line'>Starting program: /home/troydm/projects/toytest/toy
+</span><span class='line'>Toy-Prolog listening:
+</span><span class='line'>?&ndash; a.&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'>0x0804a831 in PURGETRAIL (LOW=37294) at toy.p:1224
+</span><span class='line'>1224                    if (tt [high] &lt; frozenvars) or (tt [high] > frozenheap)&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>It seems <em>purgetail</em> procedure is at fault.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">purgetrail</span> <span class="p">(</span> <span class="nb">low</span> <span class="o">:</span> <span class="n">ttx</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">remove</span> <span class="n">unnecessary</span> <span class="n">trail</span> <span class="n">entries</span> <span class="n">at</span> <span class="k">and</span> <span class="n">above</span> <span class="nb">low</span> <span class="o">,</span> <span class="n">either</span> <span class="n">after</span>
+</span><span class='line'>   <span class="n">a</span> <span class="n">successful</span> <span class="n">unifyordont</span> <span class="n">call</span> <span class="k">or</span> <span class="n">after</span> <span class="n">popping</span> <span class="n">backtrack</span><span class="o">-</span><span class="n">points</span> <span class="k">in</span>
+</span><span class='line'>   <span class="n">a</span> <span class="n">non</span><span class="o">-</span><span class="n">backtracking</span> <span class="n">context</span> <span class="p">(</span> <span class="n">unfreeze</span> <span class="p">)</span><span class="o">.</span> <span class="n">this</span> <span class="k">is</span> <span class="n">necessary</span><span class="o">,</span> <span class="k">as</span>
+</span><span class='line'>   <span class="n">unfrozen</span> <span class="n">vars</span> <span class="n">might</span> <span class="n">be</span> <span class="n">moved</span> <span class="k">or</span> <span class="n">destroyed</span> <span class="err">&amp;</span><span class="n">ndash</span><span class="o">;</span> <span class="n">it</span> <span class="n">also</span> <span class="n">saves</span> <span class="n">trail</span> <span class="n">space</span><span class="o">.</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">var</span>   <span class="nb">high</span> <span class="o">:</span> <span class="n">ttx</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="k">for</span> <span class="nb">high</span><span class="o">:=</span> <span class="nb">low</span> <span class="k">to</span> <span class="n">ttop</span> <span class="err">&amp;</span><span class="n">ndash</span><span class="o">;</span> <span class="mi">1</span> <span class="k">do</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>        <span class="k">if</span> <span class="p">(</span><span class="n">tt</span> <span class="p">[</span><span class="nb">high</span><span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span> <span class="n">frozenvars</span><span class="p">)</span> <span class="k">or</span> <span class="p">(</span><span class="n">tt</span> <span class="p">[</span><span class="nb">high</span><span class="p">]</span> <span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="n">frozenheap</span><span class="p">)</span>
+</span><span class='line'>                                                            <span class="k">then</span> <span class="k">begin</span>
+</span><span class='line'>                <span class="n">tt</span> <span class="p">[</span> <span class="nb">low</span> <span class="p">]</span> <span class="o">:=</span>  <span class="n">tt</span> <span class="p">[</span> <span class="nb">high</span> <span class="p">]</span><span class="o">;</span>   <span class="nb">low</span><span class="o">:=</span> <span class="nb">low</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>        <span class="k">end</span><span class="o">;</span>
+</span><span class='line'><span class="n">ttop</span><span class="o">:=</span> <span class="nb">low</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Hmm, it&rsquo;s starts from <em>low</em> and goes till <em>ttop-1</em> to remove unused trail entries from array.
+Let&rsquo;s add some <em>writeln</em> output of <em>low</em> and <em>ttop</em> values to see what makes it really crash.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">purgetrail</span> <span class="p">(</span> <span class="nb">low</span> <span class="o">:</span> <span class="n">ttx</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">remove</span> <span class="n">unnecessary</span> <span class="n">trail</span> <span class="n">entries</span> <span class="n">at</span> <span class="k">and</span> <span class="n">above</span> <span class="nb">low</span> <span class="o">,</span> <span class="n">either</span> <span class="n">after</span>
+</span><span class='line'>   <span class="n">a</span> <span class="n">successful</span> <span class="n">unifyordont</span> <span class="n">call</span> <span class="k">or</span> <span class="n">after</span> <span class="n">popping</span> <span class="n">backtrack</span><span class="o">-</span><span class="n">points</span> <span class="k">in</span>
+</span><span class='line'>   <span class="n">a</span> <span class="n">non</span><span class="o">-</span><span class="n">backtracking</span> <span class="n">context</span> <span class="p">(</span> <span class="n">unfreeze</span> <span class="p">)</span><span class="o">.</span> <span class="n">this</span> <span class="k">is</span> <span class="n">necessary</span><span class="o">,</span> <span class="k">as</span>
+</span><span class='line'>   <span class="n">unfrozen</span> <span class="n">vars</span> <span class="n">might</span> <span class="n">be</span> <span class="n">moved</span> <span class="k">or</span> <span class="n">destroyed</span> <span class="err">&amp;</span><span class="n">ndash</span><span class="o">;</span> <span class="n">it</span> <span class="n">also</span> <span class="n">saves</span> <span class="n">trail</span> <span class="n">space</span><span class="o">.</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">var</span>   <span class="nb">high</span> <span class="o">:</span> <span class="n">ttx</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="nb">writeln</span><span class="p">(</span><span class="s">&#39;low = &#39;</span><span class="o">,</span><span class="nb">low</span><span class="o">,</span><span class="s">&#39; ttop = &#39;</span><span class="o">,</span> <span class="n">ttop</span><span class="p">)</span><span class="o">;</span>
+</span><span class='line'>    <span class="k">for</span> <span class="nb">high</span><span class="o">:=</span> <span class="nb">low</span> <span class="k">to</span> <span class="n">ttop</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">do</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="n">tt</span> <span class="p">[</span><span class="nb">high</span><span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span> <span class="n">frozenvars</span><span class="p">)</span> <span class="k">or</span> <span class="p">(</span><span class="n">tt</span> <span class="p">[</span><span class="nb">high</span><span class="p">]</span> <span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="n">frozenheap</span><span class="p">)</span>
+</span><span class='line'>                                                                <span class="k">then</span> <span class="k">begin</span>
+</span><span class='line'>                    <span class="n">tt</span> <span class="p">[</span> <span class="nb">low</span> <span class="p">]</span> <span class="o">:=</span>  <span class="n">tt</span> <span class="p">[</span> <span class="nb">high</span> <span class="p">]</span><span class="o">;</span>   <span class="nb">low</span><span class="o">:=</span> <span class="nb">low</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="k">end</span><span class="o">;</span>
+</span><span class='line'>    <span class="n">ttop</span><span class="o">:=</span> <span class="nb">low</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s run <em>toy</em> again</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>bash$ ./toy
+</span><span class='line'>Toy-Prolog listening:
+</span><span class='line'>?&ndash; a.
+</span><span class='line'>low = 1 ttop = 3
+</span><span class='line'>low = 0 ttop = 1
+</span><span class='line'>low = 0 ttop = 1
+</span><span class='line'>low = 0 ttop = 3
+</span><span class='line'>low = 0 ttop = 1
+</span><span class='line'>low = 0 ttop = 1
+</span><span class='line'>low = 0 ttop = 1
+</span><span class='line'>low = 0 ttop = 4
+</span><span class='line'>low = 0 ttop = 1
+</span><span class='line'>low = 0 ttop = 1
+</span><span class='line'>low = 0 ttop = 1
+</span><span class='line'>low = 0 ttop = 0
+</span><span class='line'>Segmentation fault&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>It crashes when both values are 0&rsquo;s. Hmm it seems we don&rsquo;t need to iterate anything unless low &lt; ttop,
+Since the trail array is empty, so let&rsquo;s add this fix into <em>purgetrail</em>.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='pascal'><span class='line'><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">procedure</span> <span class="nf">purgetrail</span> <span class="p">(</span> <span class="nb">low</span> <span class="o">:</span> <span class="n">ttx</span> <span class="p">)</span><span class="o">;</span>
+</span><span class='line'><span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">remove</span> <span class="n">unnecessary</span> <span class="n">trail</span> <span class="n">entries</span> <span class="n">at</span> <span class="k">and</span> <span class="n">above</span> <span class="nb">low</span> <span class="o">,</span> <span class="n">either</span> <span class="n">after</span>
+</span><span class='line'>   <span class="n">a</span> <span class="n">successful</span> <span class="n">unifyordont</span> <span class="n">call</span> <span class="k">or</span> <span class="n">after</span> <span class="n">popping</span> <span class="n">backtrack</span><span class="o">-</span><span class="n">points</span> <span class="k">in</span>
+</span><span class='line'>   <span class="n">a</span> <span class="n">non</span><span class="o">-</span><span class="n">backtracking</span> <span class="n">context</span> <span class="p">(</span> <span class="n">unfreeze</span> <span class="p">)</span><span class="o">.</span> <span class="n">this</span> <span class="k">is</span> <span class="n">necessary</span><span class="o">,</span> <span class="k">as</span>
+</span><span class='line'>   <span class="n">unfrozen</span> <span class="n">vars</span> <span class="n">might</span> <span class="n">be</span> <span class="n">moved</span> <span class="k">or</span> <span class="n">destroyed</span> <span class="err">&amp;</span><span class="n">ndash</span><span class="o">;</span> <span class="n">it</span> <span class="n">also</span> <span class="n">saves</span> <span class="n">trail</span> <span class="n">space</span><span class="o">.</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="p">)</span>
+</span><span class='line'><span class="k">var</span>   <span class="nb">high</span> <span class="o">:</span> <span class="n">ttx</span><span class="o">;</span>
+</span><span class='line'><span class="k">begin</span>   <span class="k">if</span> <span class="nb">low</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span> <span class="n">ttop</span> <span class="k">then</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="k">for</span> <span class="nb">high</span><span class="o">:=</span> <span class="nb">low</span> <span class="k">to</span> <span class="n">ttop</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">do</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">tt</span> <span class="p">[</span><span class="nb">high</span><span class="p">]</span> <span class="err">&amp;</span><span class="n">lt</span><span class="o">;</span> <span class="n">frozenvars</span><span class="p">)</span> <span class="k">or</span> <span class="p">(</span><span class="n">tt</span> <span class="p">[</span><span class="nb">high</span><span class="p">]</span> <span class="err">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="n">frozenheap</span><span class="p">)</span>
+</span><span class='line'>                                <span class="k">then</span> <span class="k">begin</span>
+</span><span class='line'>        <span class="n">tt</span> <span class="p">[</span> <span class="nb">low</span> <span class="p">]</span> <span class="o">:=</span>  <span class="n">tt</span> <span class="p">[</span> <span class="nb">high</span> <span class="p">]</span><span class="o">;</span>   <span class="nb">low</span><span class="o">:=</span> <span class="nb">low</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="k">end</span><span class="o">;</span>
+</span><span class='line'><span class="n">ttop</span><span class="o">:=</span> <span class="nb">low</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">end</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s run <em>make</em> and then run <em>toy</em> interpreter again</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p>bash$ ./toy
+</span><span class='line'>Toy-Prolog listening:
+</span><span class='line'>?&ndash; display(&lsquo;Hello World!&rsquo;), nl.
+</span><span class='line'>Hello World!
+</span><span class='line'>yes&lt;/p>
+</span><span class='line'>
+</span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>And we did it! It works :) It might have some other bugs since it&rsquo;s an old software but i haven&rsquo;t encountered any more yet.
+I&rsquo;ve also ported <em>btoy.p</em> the same way stumbling upon same kind of errors and same <em>purgetrail</em> bug.</p>
+
+<p><img src="http://i.imgur.com/NX5NdN5.png" alt="Hyouka" /></p>
+]]></content>
+  </entry>
+  
+</feed>
