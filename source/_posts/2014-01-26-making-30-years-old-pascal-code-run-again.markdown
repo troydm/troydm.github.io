@@ -19,6 +19,8 @@ and honestly sometimes hard to follow. I can't recommend it as a starter book ab
 the one they originally wrote in *Pascal* back in 1983 and it's port to *C* in 2013 which, as stated on their website, was done because they couldn't compile old *Pascal* code 
 with [Free Pascal Compiler](http://www.freepascal.org/) and because... well *Pascal* is quite out of fashion nowadays. Couldn't compile?! Well, challenge accepted!
 
+<!-- more -->
+
 We'll start with *toy.p* (original source code) and *syskernel* (boot file written in toy's original prolog syntax) file. Let's create a *Makefile* and try compiling the software with *fpc*.
 
 {% codeblock %}

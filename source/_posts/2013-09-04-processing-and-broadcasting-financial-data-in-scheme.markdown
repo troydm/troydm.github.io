@@ -13,6 +13,8 @@ Second requirement is determined by constantly changing business rules imposed o
 
 ![(eq? 'money 'power)](http://i.imgur.com/OErpvNu.png)
 
+<!-- more -->
+
 Correctly choosing programming language for such applications is key to success. Since first requirement already suggests using languages 
 that produce native binary executables we might start thinking to use popular languages such as **C**, **C++**. However developing networked applications
 in **C** or **C++** takes more time than in languages such as **Java** or **C#**, and applications developed aren't as easy modifiable as it may seem, so these languages

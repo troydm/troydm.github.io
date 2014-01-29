@@ -21,6 +21,8 @@ so i could automate my servers through irc, i thought why not write it in [Perl]
 using [POE::Component::IRC][2] so i've decided to try and use the same framework for my bot. It's based on really popular [POE][3] event loop framework which is very easy to learn and use.
 **Matt Cashner** wrote a really good introduction article called [Application Design with POE](http://www.perl.com/pub/2004/07/02/poeintro.html)
 
+<!-- more -->
+
 The whole code for my bot is just 500 lines and is available from this repository [shellbot](https://github.com/troydm/shellbot).
 I'm going to walk through a key concepts that are essential for writing an irc bot in [POCO::IRC][2] using my bot's source code as a reference.
 

@@ -16,6 +16,8 @@ So if you don't have one then you are behind of times
 
 So what do we need to share some file over torrent? Yes indeed we need a torrent tracker
 
+<!-- more -->
+
 [![The Pirate Bay](https://thepiratebay.se/static/img/tpb.jpg)](http://thepiratebay.se)
 
 You probably heard of the famous pirate bay arrr!... haven't you?
