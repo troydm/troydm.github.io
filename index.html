@@ -1,0 +1,806 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Troydm's Blog</title>
+  <meta name="author" content="Dmitry Geurkov">
+
+  
+  <meta name="description" content="Any software developer who worked in financial industry will tell you that there are
+few key requirements to programming applications for real time &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://troydm.github.io">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Troydm's Blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Troydm's Blog</a></h1>
+  
+    <h2>A personal blog about software development</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://ddg.gg/" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:troydm.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="https://github.com/troydm/">Github</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme/">Processing &amp; Broadcasting Financial Data in Scheme</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-09-04T21:44:00+04:00" pubdate data-updated="true">Sep 4<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Any software developer who worked in financial industry will tell you that there are
+few key requirements to programming applications for real time market. Applications should be as fast as possible and
+they should be as easily modifiable as possible. First requirement is essential since getting and processing information
+takes time and sending processed information takes even additional precious time, and in financial world time equals money.
+Second requirement is determined by constantly changing business rules imposed on data processing.</p>
+
+<p><img src="http://i.imgur.com/OErpvNu.png" alt="(eq? 'money 'power)" /></p>
+
+<p>Correctly choosing programming language for such applications is key to success. Since first requirement already suggests using languages
+that produce native binary executables we might start thinking to use popular languages such as <strong>C</strong>, <strong>C++</strong>. However developing networked applications
+in <strong>C</strong> or <strong>C++</strong> takes more time than in languages such as <strong>Java</strong> or <strong>C#</strong>, and applications developed aren&#8217;t as easy modifiable as it may seem, so these languages
+don&#8217;t comply with our second requirement. What alternatives do we have? Since it&#8217;s financial world and we want our applications to be absolutely correct, we might
+want to choose functional programming language and benefit of their advantages. So we have a choice between popular functional programming languages
+<strong>Haskell</strong>, <strong>OCaml</strong> and <strong>Scheme</strong>. <strong>OCaml</strong> is well known to
+be used by a big financial company <a href="http://janestreet.com/">Janestreet</a> and is a really good choice, it has <strong>ML</strong> like syntax which is really easy to get used to.
+<strong>Haskell</strong> is extremely popular however it&#8217;s laziness implies some overcomplicated
+programming and some performance penalties we don&#8217;t want to have. <strong>Scheme</strong> is very simple language with <strong>Lisp</strong>-like syntax that is very easy to start programming with and it&#8217;s programs
+are very easily modifiable. <strong>Scheme</strong> has many implementations that have it&#8217;s own libraries and it&#8217;s own pros and cons. <strong>Scheme</strong>&#8217;s only downside is that it&#8217;s not statically typed so it doesn&#8217;t catches some obvious
+compile-time errors, but as long as our application works fine everything is ok! Further on let&#8217;s consider that we&#8217;ve chosen <strong>Scheme</strong> as our language. Other languages have it&#8217;s own benefits but for our
+needs it&#8217;s the most suited choice, since we want to start developing as fast as possible. Since we want to produce native binary executables we&#8217;ll limit our choice
+on <a href="http://www.call-cc.org/">Chicken Scheme</a> which produces very efficient binary applications and is very popular.</p>
+
+<p>So let&#8217;s consider our hypothetical but very common situation where we want to quickly develop an application that gets a stream of some data (let&#8217;s imagine it&#8217;s a real time financial market data)
+that we can get by connecting to some arbitrary tcp host:port. The data that we&#8217;ll get will be parsed, processed and will be broadcasted to all clients that will connect to our small application
+using tcp protocol. So we need to develop some small tcp client and broadcasting server black box.</p>
+
+<p><img src="http://i.imgur.com/T4gMsTT.png" alt="black box" /></p>
+
+<p><a href="http://www.call-cc.org/">Chicken Scheme</a> has a system called <a href="http://wiki.call-cc.org/chicken-projects/egg-index-4.html">Eggs</a> which is a common way to distribute community extensions.
+We&#8217;ll be using two extensions to ease our task of developing our application. One is called <a href="http://wiki.call-cc.org/eggref/4/synch">synch</a> which is a set of some useful functions to
+work with concurrent code in <a href="http://www.call-cc.org/">Chicken Scheme</a>. The other one we&#8217;ll be using is called <a href="http://wiki.call-cc.org/eggref/4/mailbox-threads">mailbox-threads</a> which
+is a convenient <strong>Erlang</strong>-like message passing framework. So let&#8217;s install those extension by typing following in our console:</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>chicken-install synch
+</span><span class='line'>chicken-install mailbox-threads
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So let&#8217;s start writing our application. Create a file called <em>myapp.scm</em>. First thing we need to do is load our extensions.
+Also we&#8217;ll be using some functions from <a href="http://srfi.schemers.org/srfi-18/srfi-18.html">srfi-18</a> and <a href="http://srfi.schemers.org/srfi-1/srfi-1.html">srfi-1</a>
+for multi threading and some convenient list data manipulations.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="nf">require-extension</span> <span class="nv">tcp</span> <span class="nv">posix</span> <span class="nv">synch</span> <span class="nv">mailbox-threads</span><span class="p">)</span>
+</span><span class='line'><span class="p">(</span><span class="nf">require-extension</span> <span class="p">(</span><span class="nf">only</span> <span class="nv">srfi-18</span> <span class="nv">make-mutex</span> <span class="nv">make-thread</span> <span class="nv">thread-start!</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="nf">require-extension</span> <span class="p">(</span><span class="nf">only</span> <span class="nv">srfi-1</span> <span class="nv">delete</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First we need a way to get our data and process it. We&#8217;ll be using functions <em>tcp-connect</em> and <em>read-line</em> to connect to our host and read data line by line.
+Also we&#8217;ll define some arbitrary processing function that will not do any processing and just broadcast data. I don&#8217;t want to talk about processing in this post but rather focus
+on getting data and distributing it, so in the end we&#8217;ll have just a simple tcp duplicator example in <strong>Scheme</strong>. But you can do any kind of data processing by modifying
+<em>process-data</em> function.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">connect-to-host</span> <span class="s">&quot;host&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">connect-to-port</span> <span class="mi">1234</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">start-data-feeder</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">handle-exceptions</span> <span class="nv">ex</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">begin </span><span class="p">(</span><span class="nf">print</span> <span class="s">&quot;error occurred while connecting, trying to reconnect&quot;</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">(</span><span class="nf">sleep</span> <span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>        <span class="p">(</span><span class="k">let </span><span class="p">((</span><span class="nf">in</span> <span class="p">(</span><span class="nf">tcp-connect</span> <span class="nv">connect-to-host</span> <span class="nv">connect-to-port</span><span class="p">)))</span>
+</span><span class='line'>            <span class="p">(</span><span class="nf">get-data</span> <span class="nv">in</span><span class="p">)))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">start-data-feeder</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-data</span> <span class="nv">in</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">process-data</span> <span class="p">(</span><span class="nf">read-line</span> <span class="nv">in</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">get-data</span> <span class="nv">in</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">process-data</span> <span class="nv">data</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">broadcast</span> <span class="nv">data</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So we have our data gathering and processing ready, now we need to start a tcp server and broadcast data to all clients.
+We&#8217;ll be using <em>mailboxes</em> list that will contain each client&#8217;s mailbox and we&#8217;ll have a separate mutex to make sure operations
+on <em>mailboxes</em> list are thread-safe.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">mtx</span> <span class="p">(</span><span class="nf">make-mutex</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">mailboxes</span> <span class="o">&#39;</span><span class="p">())</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">broadcast</span> <span class="nv">data</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">synch</span> <span class="nv">mtx</span> <span class="p">(</span><span class="nb">map </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">mailbox</span><span class="p">)</span> <span class="p">(</span><span class="nf">thread-send</span> <span class="nv">mailbox</span> <span class="nv">data</span><span class="p">))</span> <span class="nv">mailboxes</span><span class="p">)))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So let&#8217;s write our tcp broadcasting server. Each connected client will have a his mailbox added to <em>mailboxes</em> list.
+When client will disconnect, his mailbox will be deleted from <em>mailboxes</em> list. We&#8217;ll use <em>tcp-listen</em> and <em>tcp-accept</em> functions to
+listen on port and accept connections on listener. Each client will be processed by separate thread.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="k">define </span><span class="nv">broadcast-on-port</span> <span class="mi">4321</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">start-broadcasting</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">accept-client</span> <span class="p">(</span><span class="nf">tcp-listen</span> <span class="nv">broadcast-on-port</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">accept-client</span> <span class="nv">listener</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">let-values</span> <span class="p">([(</span><span class="nf">in</span> <span class="nv">out</span><span class="p">)</span> <span class="p">(</span><span class="nf">tcp-accept</span> <span class="nv">listener</span><span class="p">)])</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">thread-start!</span> <span class="p">(</span><span class="nf">make-thread</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">lambda </span><span class="p">()</span>
+</span><span class='line'>                <span class="p">(</span><span class="nf">handle-exceptions</span> <span class="nv">ex</span>
+</span><span class='line'>                        <span class="p">(</span><span class="nf">synch</span> <span class="nv">mtx</span> <span class="p">(</span><span class="k">set! </span><span class="nv">mailboxes</span> <span class="p">(</span><span class="nf">delete</span> <span class="p">(</span><span class="nf">current-thread</span><span class="p">)</span> <span class="nv">mailboxes</span><span class="p">)))</span>
+</span><span class='line'>                    <span class="p">(</span><span class="nf">synch</span> <span class="nv">mtx</span> <span class="p">(</span><span class="k">set! </span><span class="nv">mailboxes</span> <span class="p">(</span><span class="nb">cons </span><span class="p">(</span><span class="nf">current-thread</span><span class="p">)</span> <span class="nv">mailboxes</span><span class="p">)))</span>
+</span><span class='line'>                    <span class="p">(</span><span class="nf">process-client</span> <span class="nv">in</span> <span class="nv">out</span><span class="p">))</span>
+</span><span class='line'>                <span class="p">(</span><span class="nb">close-output-port </span><span class="nv">out</span><span class="p">)</span>
+</span><span class='line'>                <span class="p">(</span><span class="nb">close-input-port </span><span class="nv">in</span><span class="p">)))))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">accept-client</span> <span class="nv">listener</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">process-client</span> <span class="nv">in</span> <span class="nv">out</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">write-line</span> <span class="p">(</span><span class="nf">thread-receive</span><span class="p">)</span> <span class="nv">out</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">process-client</span> <span class="nv">in</span> <span class="nv">out</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now only thing left is to start our broadcasting server in separate thread and start feeding it data</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='scheme'><span class='line'><span class="p">(</span><span class="nf">thread-start!</span> <span class="p">(</span><span class="nf">make-thread</span> <span class="nv">start-broadcasting</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="nf">start-data-feeder</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Pretty neat and simple, isn&#8217;t it :)</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writting IRC Bot Using Perl 5 and POCO::IRC</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-22T21:29:00+04:00" pubdate data-updated="true">Jul 22<span>nd</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don&#8217;t.
+It was invented a really long time ago and isn&#8217;t going away anytime soon despite some new generation alternatives poping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
+
+<p>Personally i always have my irc client running (i&#8217;m using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
+who inspire me to try new technologies and learn something different every day. One person, who&#8217;s nick i won&#8217;t name, was always telling me about how awesome <a href="http://perl.org/" title="Perl">Perl</a>
+as a programming language is and how great it&#8217;s potential is thanks to <a href="http://cpan.org" title="CPAN">CPAN</a> that has almost 124k modules for any life situation.
+I always thought he was exaggerating and literally acting like a <a href="http://perl.org/" title="Perl">Perl</a> fanboy. <a href="http://perl.org/" title="Perl">Perl</a> was the first programming language i&#8217;ve learned back in the late 90&#8217;s
+and remembering how frustuating my experience with it was and how cryptic it really was for me do something with it when i was unexperienced and lacked lots of qualities that make up a
+any decent software engineer i was skeptic about using it again.
+Well, time passed, time always passes, and i haven&#8217;t written anything more than quick 50 line server scripts in <a href="http://perl.org/" title="Perl">Perl</a> for almost 13 years.
+I&#8217;ve almost forgotten everything about <a href="http://perl.org/" title="Perl">Perl</a>. Since lately i was having this crazy idea about writing irc bot that could store and execute shell scripts on server
+so i could automate my servers through irc, i thought why not write it in <a href="http://perl.org/" title="Perl">Perl</a>. I&#8217;ve remembered that person who was always bragging about <a href="http://perl.org/" title="Perl">Perl</a>&#8217;s greatness wrote an irc bot in <a href="http://perl.org/" title="Perl">Perl</a>
+using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE::Component::IRC</a> so i&#8217;ve decided to try and use the same framework for my bot. It&#8217;s based on really popular <a href="https://metacpan.org/module/POE" title="POE">POE</a> event loop framework which is very easy to learn and use.
+<strong>Matt Cashner</strong> wrote a really good introduction article called <a href="http://www.perl.com/pub/2004/07/02/poeintro.html">Application Design with POE</a></p>
+
+<p>The whole code for my bot is just 500 lines and is available from this repository <a href="https://github.com/troydm/shellbot">shellbot</a>.
+I&#8217;m going to walk through a key concepts that are essential for writing an irc bot in <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POCO::IRC</a> using my bot&#8217;s source code as a reference.</p>
+
+<p><img src="http://i.imgur.com/kiqhDBH.jpg" alt="Chobits" /></p>
+
+<p>Before we&#8217;ll start our <a href="http://perl.org/" title="Perl">Perl</a> IRC bot we need some way to store configuration for it. Since <a href="http://cpan.org" title="CPAN">CPAN</a> has lots of modules that deal with configuration the choice wasn&#8217;t an easy one but
+i&#8217;ve decided to use <a href="https://metacpan.org/module/YAML">YAML</a> which is module for loading <a href="http://yaml.org" title="YAML">YAML</a> data into <a href="http://perl.org/" title="Perl">Perl</a> that can work the other way too. <a href="http://yaml.org" title="YAML">YAML</a> is a simple markup language
+that is perfect for storing configuration and it&#8217;s really quick to learn. For loading YAML configuration i&#8217;ve used <strong>LoadFile</strong> function and to store <a href="http://perl.org/" title="Perl">Perl</a> data back into file i&#8217;ve used <strong>DumpFile</strong> function.
+Just two simple functions that do all the complex work work for me. Since i wanted to store commands in the same file i just used <a href="http://perl.org/" title="Perl">Perl</a>&#8217;s list construct to specify that i&#8217;m loading two seperate <a href="http://yaml.org" title="YAML">YAML</a> documents.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="c1"># Loading configuration </span>
+</span><span class='line'><span class="k">my</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">)</span> <span class="o">=</span> <span class="n">LoadFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Storing configuration</span>
+</span><span class='line'><span class="n">DumpFile</span><span class="p">(</span><span class="nv">$config_file</span><span class="p">,</span> <span class="p">(</span><span class="nv">$config</span><span class="p">,</span> <span class="nv">$commands</span><span class="p">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next step is to create POE Session and start event loop. Note that since my module is named Shellbot i need to specify it otherwise event loop won&#8217;t be able to call functions.
+Each of this functions are called by <a href="https://metacpan.org/module/POE" title="POE">POE</a> when specified events occur and all the bot logic is handled by those functions.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="nn">POE::</span><span class="n">Session</span><span class="o">-&gt;</span><span class="n">create</span><span class="p">(</span>
+</span><span class='line'>    <span class="n">package_states</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span class='line'>        <span class="n">Shellbot</span> <span class="o">=&gt;</span> <span class="p">[</span> <span class="sx">qw(_start _default irc_join irc_msg irc_bot_addressed irc_connected </span>
+</span><span class='line'><span class="sx">                         got_job_stdout got_job_stderr got_job_close got_child_signal)</span> <span class="p">]</span>
+</span><span class='line'>    <span class="p">]</span>
+</span><span class='line'><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="nn">POE::</span><span class="n">Kernel</span><span class="o">-&gt;</span><span class="n">run</span><span class="p">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First event that is executed after the POE event loop starts is <strong>_start</strong> event so we need to initialize bot
+state in that event. Also since <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POCO::IRC</a> comes with some essential plugins and is modular by itself we can take advantage of this.
+Instead of manually making bot reconnect when it looses connection with server i&#8217;ve used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::Connector">Connector</a> plugin.
+If we want our bot to automaticly join some channel we can use <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::AutoJoin">AutoJoin</a> plugin.
+And to easily handle when someone addresses bot i&#8217;ve used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::BotAddressed">BotAddressed</a> plugin.
+Since i wanted my bot to handle commands i could have used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::BotCommand">BotCommand</a> plugin however i wanted my bot
+to have two modes of commands so i&#8217;ve decided to write bot command handling functions manually.</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="k">my</span> <span class="nv">$irc</span> <span class="o">=</span> <span class="nn">POE::Component::IRC::</span><span class="n">State</span><span class="o">-&gt;</span><span class="n">spawn</span><span class="p">(</span><span class="nv">%opts</span><span class="p">);</span>
+</span><span class='line'><span class="nv">$heap</span><span class="o">-&gt;</span><span class="p">{</span><span class="n">irc</span><span class="p">}</span> <span class="o">=</span> <span class="nv">$irc</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Connector plugin</span>
+</span><span class='line'><span class="nv">$heap</span><span class="o">-&gt;</span><span class="p">{</span><span class="n">connector</span><span class="p">}</span> <span class="o">=</span> <span class="nn">POE::Component::IRC::Plugin::</span><span class="n">Connector</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">();</span>
+</span><span class='line'><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">plugin_add</span><span class="p">(</span> <span class="s">&#39;Connector&#39;</span> <span class="o">=&gt;</span> <span class="nv">$heap</span><span class="o">-&gt;</span><span class="p">{</span><span class="n">connector</span><span class="p">}</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Autojoin plugin</span>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="nb">exists</span><span class="p">(</span><span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="s">&#39;channels&#39;</span><span class="p">})</span> <span class="o">&amp;&amp;</span> <span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="s">&#39;channels&#39;</span><span class="p">}</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">){</span>
+</span><span class='line'>    <span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">plugin_add</span><span class="p">(</span><span class="s">&#39;AutoJoin&#39;</span><span class="p">,</span> <span class="nn">POE::Component::IRC::Plugin::</span><span class="n">AutoJoin</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">(</span>
+</span><span class='line'>       <span class="n">Channels</span> <span class="o">=&gt;</span> <span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="s">&#39;channels&#39;</span><span class="p">}</span>
+</span><span class='line'>    <span class="p">));</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># BotAddressed plugin</span>
+</span><span class='line'><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">plugin_add</span><span class="p">(</span> <span class="s">&#39;BotAddressed&#39;</span><span class="p">,</span> <span class="nn">POE::Component::IRC::Plugin::</span><span class="n">BotAddressed</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">()</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">yield</span><span class="p">(</span><span class="n">register</span> <span class="o">=&gt;</span> <span class="sx">qw(join msg connected)</span><span class="p">);</span>
+</span><span class='line'><span class="nv">$irc</span><span class="o">-&gt;</span><span class="n">yield</span><span class="p">(</span><span class="s">&#39;connect&#39;</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since bot can be addressed both using a private message and refering him on a channel i&#8217;ve decided to handle
+both <strong>irc_msg</strong> and <strong>irc_bot_addressed</strong> events uniformly in <strong>msg_received</strong> function</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="k">sub </span><span class="nf">irc_msg</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$irc</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="n">SENDER</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">get_heap</span><span class="p">();</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">@nick</span> <span class="o">=</span> <span class="p">(</span> <span class="nb">split</span> <span class="sr">/!/</span><span class="p">,</span> <span class="nv">$_</span><span class="p">[</span><span class="n">ARG0</span><span class="p">]</span> <span class="p">);</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$msg</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="n">ARG2</span><span class="p">];</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$heap</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="n">HEAP</span><span class="p">];</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$kernel</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="n">KERNEL</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">msg_received</span> <span class="nv">$irc</span><span class="p">,</span> <span class="nv">$heap</span><span class="p">,</span> <span class="nv">$kernel</span><span class="p">,</span> <span class="nv">$nick</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nv">$nick</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="nv">$msg</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">sub </span><span class="nf">irc_bot_addressed</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$irc</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="n">SENDER</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">get_heap</span><span class="p">();</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">@nick</span> <span class="o">=</span> <span class="p">(</span> <span class="nb">split</span> <span class="sr">/!/</span><span class="p">,</span> <span class="nv">$_</span><span class="p">[</span><span class="n">ARG0</span><span class="p">]</span> <span class="p">);</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$channel</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="n">ARG1</span><span class="p">]</span><span class="o">-&gt;</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$msg</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="n">ARG2</span><span class="p">];</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$heap</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="n">HEAP</span><span class="p">];</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$kernel</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="n">KERNEL</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">msg_received</span> <span class="nv">$irc</span><span class="p">,</span> <span class="nv">$heap</span><span class="p">,</span> <span class="nv">$kernel</span><span class="p">,</span> <span class="nv">$nick</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nv">$nick</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nv">$channel</span><span class="p">,</span> <span class="nv">$msg</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Before bot accepts a command we need some way to check if person who is issuing a command is authorized to do so. I&#8217;m doing a simple check of full irc name
+that can be specified in configuration list option <strong>authorizations</strong></p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="k">sub </span><span class="nf">is_authorized</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">my</span> <span class="nv">$name</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">grep</span> <span class="p">{</span> <span class="nv">$_</span> <span class="ow">eq</span> <span class="nv">$name</span> <span class="p">}</span> <span class="nv">@</span><span class="p">{</span> <span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="s">&#39;authorizations&#39;</span><span class="p">}</span> <span class="p">};</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>All that is left is to match commands in <strong>msg_recieved</strong> using <a href="http://perl.org/" title="Perl">Perl</a>&#8217;s <a href="http://perldoc.perl.org/perlre.html">regex</a>. This part is just a long series of bot command logic
+and <strong>if</strong> <strong>elsif</strong> <strong>else</strong> statements so i won&#8217;t reference them here. Also the key function is <strong>run_job</strong> which executes prestored shell script. It creates a temporary file that
+is executed using a shell</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="k">my</span> <span class="nv">$program</span> <span class="o">=</span> <span class="s">&quot;/bin/bash&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="nb">exists</span><span class="p">(</span><span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="s">&#39;shell&#39;</span><span class="p">})){</span>
+</span><span class='line'>    <span class="nv">$program</span> <span class="o">=</span> <span class="nv">$config</span><span class="o">-&gt;</span><span class="p">{</span><span class="s">&#39;shell&#39;</span><span class="p">};</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># create a temporary script</span>
+</span><span class='line'><span class="k">my</span> <span class="nv">$script</span> <span class="o">=</span> <span class="nn">File::</span><span class="n">Temp</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">();</span>
+</span><span class='line'><span class="k">my</span> <span class="nv">$scriptname</span> <span class="o">=</span> <span class="nv">$script</span><span class="o">-&gt;</span><span class="n">filename</span><span class="p">;</span>
+</span><span class='line'><span class="nb">chmod</span> <span class="mo">0700</span><span class="p">,</span> <span class="nv">$script</span><span class="p">;</span>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="nb">ref</span> <span class="nv">$cmd</span> <span class="ow">eq</span> <span class="s">&#39;ARRAY&#39;</span><span class="p">){</span>
+</span><span class='line'>    <span class="k">foreach</span> <span class="k">my</span> <span class="nv">$line</span> <span class="p">(</span><span class="nv">@</span><span class="p">{</span> <span class="nv">$cmd</span> <span class="p">}){</span>
+</span><span class='line'>        <span class="k">print</span> <span class="nv">$script</span> <span class="s">&quot;$line\n&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>    <span class="k">print</span> <span class="nv">$script</span> <span class="nv">$cmd</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="nv">$program</span> <span class="o">.=</span> <span class="s">&quot; $scriptname $args&quot;</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Shell execution is handled by <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE</a> using <a href="https://metacpan.org/module/POE::Wheel::Run">POE::Wheel::Run</a>
+and output from shell is received on <strong>got_job_stdout</strong> and <strong>got_job_stderr</strong> functions</p>
+
+<figure class='code'> <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="k">my</span> <span class="nv">$job</span> <span class="o">=</span> <span class="nn">POE::Wheel::</span><span class="n">Run</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">(</span>
+</span><span class='line'>    <span class="n">Program</span>      <span class="o">=&gt;</span> <span class="nv">$program</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">StdioFilter</span>  <span class="o">=&gt;</span> <span class="nn">POE::Filter::</span><span class="n">Line</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">(),</span>
+</span><span class='line'>    <span class="n">StderrFilter</span> <span class="o">=&gt;</span> <span class="nn">POE::Filter::</span><span class="n">Line</span><span class="o">-&gt;</span><span class="k">new</span><span class="p">(),</span>
+</span><span class='line'>    <span class="n">StdoutEvent</span>  <span class="o">=&gt;</span> <span class="s">&quot;got_job_stdout&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">StderrEvent</span>  <span class="o">=&gt;</span> <span class="s">&quot;got_job_stderr&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">CloseEvent</span>   <span class="o">=&gt;</span> <span class="s">&quot;got_job_close&quot;</span><span class="p">,</span>
+</span><span class='line'><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That&#8217;s all there is to it. To install and trying it out just look through a <a href="https://github.com/troydm/shellbot/blob/master/README.md">readme</a></p>
+
+<p>Offcourse making a temporary shell script and executing it is generally unsafe. Also there is security concern
+that bot can be somehow hacked and commanded by unathorized nick but i&#8217;m not sure how can this be done without changing vhost.
+That is why i called this bot a potentially unsafe. If anyone can find any security holes please do pull request or just email me patch.</p>
+
+<p>To make this bot little more secure we need to make him connect to irc using SSL. For this i&#8217;ll walk through a general steps for configuring
+<a href="https://www.freenode.net/certfp/">CertFP</a> and generating self signed certificate for <a href="https://www.freenode.net/">Freenode</a> as an example.
+First step is to register your bot&#8217;s nick with <a href="https://blog.freenode.net/2007/03/nickserv-is-your-friend/">NickServ</a>.
+Choose a nickname for your bot and start it up. Ask your bot to register with NickServ by private messaging him on irc.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ REGISTER nickservpass email@address.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Shortly you&#8217;ll receive an email verification that will include verification code, privately message your bot again to verify your registration</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ VERIFY REGISTER botnick verificationcode</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now your bot&#8217;s nick is registered with NickServ so edit your configuration file and uncomment nickserv line to specify your nickservpass that will
+be used each time your bot will connect to server for authorization of your nick</p>
+
+<p>Now we&#8217;ll generate a self signed certificate for SSL, i&#8217;ve used <a href="https://www.freenode.net/certfp/makecert.shtml">this</a> manual for reference.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>umask 077
+</span><span class='line'>openssl req -newkey rsa:2048 -days 730 -x509 -keyout botnick.key -out botnick.crt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You&#8217;ll be asked some questions and after that openssl will generate two files, your bot&#8217;s certificate and key.
+For CertFP to work we need a fingerprint of your key and certificate</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat botnick.crt botnick.key > botnick.pem
+</span><span class='line'>openssl x509 -sha1 -noout -fingerprint -in botnick.pem | sed -e 's/^.*=//;s/://g;y/ABCDEF/abcdef/'</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After this you&#8217;ll get a fingerprint that you need to add to NickServ</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ CERT ADD fingerprint</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now all that is left is to specify in configuration that we are connecting using SSL certificate and key.
+Just uncomment <strong>sslcrt</strong> and <strong>sslkey</strong> options and specify full path to your bot&#8217;s certificate and key.
+Also don&#8217;t forget to change the port since we need to specify an SSL port instead of usual one, just specify
+<strong>6697</strong>, <strong>7000</strong> or <strong>7070</strong> and restart your bot to enjoy fully secured connection to irc server.
+Also i&#8217;ve used <a href="https://metacpan.org/module/DETI/Proc-Daemon-0.14/lib/Proc/Daemon.pod">Proc::Daemon</a> for running this bot
+as daemon so you can uncomment <strong>daemon</strong> and <strong>log</strong> options to run it as daemon process.</p>
+
+<p>So what did i learned from writing this small irc bot in <a href="http://perl.org/" title="Perl">Perl</a>?
+Now the first most common mistake i was always making when coding in <a href="http://perl.org/" title="Perl">Perl</a> was the difference between list and array, so
+I recommend this article by <strong>Mike Friedman</strong> <a href="http://friedo.com/blog/2013/07/arrays-vs-lists-in-perl">Arrays vs. Lists in Perl</a>
+that helped me a lot. Also dereferncing was the second most common mistake i had, until i&#8217;ve read this article
+<a href="http://perlmeme.org/howtos/using_perl/dereferencing.html">Dereferencing in Perl</a>. But the biggest thing i&#8217;ve learned was that <a href="http://perl.org/" title="Perl">Perl</a>
+as a scripting language is really easy to use and powerfull despite some people claiming it&#8217;s dead, it&#8217;s still alive and it&#8217;s doing
+just <a href="http://www.nntp.perl.org/group/perl.perl5.porters/2013/07/msg204905.html">fine</a>!
+Just look how many modules are released on <a href="http://cpan.org" title="CPAN">CPAN</a> everyday! And it&#8217;s really really fun to code in, so everyone should try learning and using it!!!</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/">Hosting Your Own Remote Private Torrent Tracker</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-04-24T22:05:00+04:00" pubdate data-updated="true">Apr 24<span>th</span>, 2013</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Evar wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
+
+<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won&#8217;t consider them here!
+So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?</p>
+
+<p>Oh you don&#8217;t? Snap it&#8217;s it&#8217;s so useful that nowadays almost everyone has some kind of NAS that he/she is using for file storage and torrents.
+So if you don&#8217;t have one then you are behind of times</p>
+
+<p>So what do we need to share some file over torrent? Yes indeed we need a torrent tracker</p>
+
+<p><a href="http://thepiratebay.se"><img src="https://thepiratebay.se/static/img/tpb.jpg" alt="The Pirate Bay" /></a></p>
+
+<p>You probably heard of the famous pirate bay arrr!&#8230; haven&#8217;t you?
+Well pirate bay has a torrent tracker and you don&#8217;t. So you either have a choice and become a pirate bay resident and upload your torrent on their site
+or you can host your own little pirate bay just for you and your friends only</p>
+
+<p>Most torrent clients include torrent tracker functionality out of the box but let&#8217;s consider our little case were we a have headless home server with torrent client
+that has only web interface and no torrent tracker
+So what do we do? We run our own standalone torrent tracker!</p>
+
+<p>So that&#8217;s how i&#8217;ve ended on <a href="http://en.wikipedia.org/wiki/Comparison_of_BitTorrent_tracker_software">this page</a></p>
+
+<p>My first choice was <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a> which is a very popular tracker that even pirate bay uses on their servers.
+First thing i did i&#8217;ve compiled and configured it in few mins and had it running on my <strong>6969</strong> port.
+So i&#8217;ve port forwarded my router&#8217;s external ip <strong>6969</strong> port to my NAS box&#8217;s port and checked if i could access it remotely!
+So the next thing i&#8217;ve created a torrent with my torrent tracker announce url specified as <strong>http://192.168.0.x:6969/announce</strong> using <a href="http://mktorrent.sourceforge.net/">mktorrent</a>
+and added it to my torrent client which started seeding it right away. The next step i&#8217;ve created the same torrent file with announce url changed to my external ip and sent it to my friend!
+My friend started his torrent client and added the torrent. He could see that it had one seeder but still couldn&#8217;t download the file. Simple troubleshooting revealed that my torrent tracker
+was listing my seeder peer with a local network ip address that my friend&#8217;s torrent client couldn&#8217;t connect to&#8230;</p>
+
+<p><img src="http://i.imgur.com/TCYjoCe.jpg" alt="Crying Loli" /></p>
+
+<p>I knew now what i needed from torrent tracker. My port was the same but my ip address should be external instead of internal.
+I needed local ip subsituted with remote ip for all external network peers. The peer port would remain the same since i have the same port forwarded.</p>
+
+<p>Unfortunately i couldn&#8217;t find any functionality in <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a> that would do that :(</p>
+
+<p>So next thing i did i&#8217;ve downloaded <a href="https://code.google.com/p/udpt/">udpt</a> and had it compiled.
+It uses <a href="http://www.bittorrent.org/beps/bep_0015.html">udp tracker protocol</a> which is much more
+network effecient. <a href="https://code.google.com/p/udpt/">udpt</a> is much more smaller than <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a>
+in both source code and functionality and thus was ideal to experiment with.</p>
+
+<p>Adding the needed functionality didn&#8217;t solved my problem because udpt had some other bugs that i had to track down but in a few hours i had everything up and working!
+In the end i had a fully working private torrent tracker that was doing what i was hoping for.
+I&#8217;ve even added code to run it as linux daemon thanks to <a href="http://www.netzmafia.de/skripten/unix/linux-daemon-howto.html">this little howto</a></p>
+
+<p>My experimental fork is at <a href="https://github.com/troydm/udpt">this repository</a></p>
+
+<p><img src="http://i.imgur.com/M6W7RfM.png" alt="Pirate Loli" /></p>
+
+<p>Happy torrenting pirates!</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>About Me</h1>
+  <a href="/about"><img src="/images/me.jpg"></a>
+  <p>
+  I&#8217;m software developer, functional programming enthusiast 
+  and open source evangelist from <a href="https://en.wikipedia.org/wiki/Tbilisi">Tbilisi, Georgia</a>
+  </p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme/">Processing &amp; Broadcasting Financial Data in Scheme</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writting IRC Bot using Perl 5 and POCO::IRC</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/">Hosting your own remote private torrent tracker</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/troydm">@troydm</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'troydm',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'dgeurkov';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
