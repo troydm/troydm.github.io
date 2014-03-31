@@ -5,15 +5,15 @@ date: 2014-01-26 22:48
 comments: true
 categories: [pascal, fpc, prolog] 
 ---
-Recently i've been interested in [Logic Programming](https://en.wikipedia.org/wiki/Logic_programming), notably in learning [Prolog](https://en.wikipedia.org/wiki/Prolog)
-so i'm in a process of reading two great books, [Programming for Artificial Intelligence](http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/) and 
-[The Art of Prolog](http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/). If you want to get a quick feel of *Prolog* i recommend you take a look at 
+Recently I've been interested in [Logic Programming](https://en.wikipedia.org/wiki/Logic_programming), notably in learning [Prolog](https://en.wikipedia.org/wiki/Prolog)
+so I'm in a process of reading two great books, [Programming for Artificial Intelligence](http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/) and 
+[The Art of Prolog](http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/). If you want to get a quick feel of *Prolog* I recommend you take a look at 
 Bernardo Pires's [Gentle Introduction to Prolog](https://bernardopires.com/2013/10/try-logic-programming-a-gentle-introduction-to-prolog/) and [Prologomenon](http://prologomenon.wordpress.com/) blog.
 To put it simply *Prolog* is all about logic, deduction and backtracking 
 
 ![Sherlock Loli](http://i.imgur.com/Mwlmvyk.jpg)
 
-While browsing [/r/prolog](http://reddit.com/r/prolog) i've stumbbled upon [Prolog for Programmers](https://sites.google.com/site/prologforprogrammers/) originally published in 1985, an old book indeed
+While browsing [/r/prolog](http://reddit.com/r/prolog) I've stumbled upon [Prolog for Programmers](https://sites.google.com/site/prologforprogrammers/) originally published in 1985, an old book indeed
 and honestly sometimes hard to follow. I can't recommend it as a starter book about *Prolog* but it's still quite interesting to read. However it has a whole two chapters describing implementation of 
 *Prolog* interpreter which is quite a complex task and sparkled my interest in continuing reading this book. Authors provide source code of two version of Prolog interpreter, 
 the one they originally wrote in *Pascal* back in 1983 and it's port to *C* in 2013 which, as stated on their website, was done because they couldn't compile old *Pascal* code 
@@ -618,7 +618,7 @@ yes
 
 {% endcodeblock %}
 
-And we did it! It works :) It might have some other bugs since it's an old software but i haven't encountered any more yet.
+And we did it! It works :) It might have some other bugs since it's an old software but I haven't encountered any more yet.
 I've also ported *btoy.p* the same way stumbling upon same kind of errors and same *purgetrail* bug.
 
 ![Hyouka](http://i.imgur.com/NX5NdN5.png)

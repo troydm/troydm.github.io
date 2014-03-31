@@ -1,37 +1,37 @@
 ---
 layout: post
-title: "Writting IRC Bot using Perl 5 and POCO::IRC"
+title: "Writing IRC Bot using Perl 5 and POCO::IRC"
 date: 2013-07-22 21:29
 comments: true
 categories: [perl, irc, shell]
 ---
 
 Some people use [IRC](https://en.wikipedia.org/wiki/Internet_Relay_Chat) to chat, some don't. 
-It was invented a really long time ago and isn't going away anytime soon despite some new generation alternatives poping up like [Jabber](http://www.jabber.org/). 
+It was invented a really long time ago and isn't going away anytime soon despite some new generation alternatives popping up like [Jabber](http://www.jabber.org/). 
 
-Personally i always have my irc client running (i'm using [weechat](http://weechat.org/) + [tmux](http://tmux.sourceforge.net/)) and chat with lots of interesting people
-who inspire me to try new technologies and learn something different every day. One person, who's nick i won't name, was always telling me about how awesome [Perl][1] 
+Personally I always have my IRC client running (I'm using [weechat](http://weechat.org/) + [tmux](http://tmux.sourceforge.net/)) and chat with lots of interesting people
+who inspire me to try new technologies and learn something different every day. One person, who's nickname I won't name, was always telling me about how awesome [Perl][1] 
 as a programming language is and how great it's potential is thanks to [CPAN][4] that has almost 124k modules for any life situation. 
-I always thought he was exaggerating and literally acting like a [Perl][1] fanboy. [Perl][1] was the first programming language i've learned back in the late 90's 
-and remembering how frustuating my experience with it was and how cryptic it really was for me do something with it when i was unexperienced and lacked lots of qualities that make up a 
-any decent software engineer i was skeptic about using it again. 
-Well, time passed, time always passes, and i haven't written anything more than quick 50 line server scripts in [Perl][1] for almost 13 years.
-I've almost forgotten everything about [Perl][1]. Since lately i was having this crazy idea about writing irc bot that could store and execute shell scripts on server
-so i could automate my servers through irc, i thought why not write it in [Perl][1]. I've remembered that person who was always bragging about [Perl][1]'s greatness wrote an irc bot in [Perl][1]
-using [POE::Component::IRC][2] so i've decided to try and use the same framework for my bot. It's based on really popular [POE][3] event loop framework which is very easy to learn and use.
+I always thought he was exaggerating and literally acting like a [Perl][1] fanboy. [Perl][1] was the first programming language I've learned back in the late 90's 
+and remembering how frustrating my experience with it was and how cryptic it really was for me do something with it when I was unexperienced and lacked lots of qualities that make up a 
+any decent software engineer I was skeptic about using it again. 
+Well, time passed, time always passes, and I haven't written anything more than quick 50 line server scripts in [Perl][1] for almost 13 years.
+I've almost forgotten everything about [Perl][1]. Since lately I was having this crazy idea about writing IRC bot that could store and execute shell scripts on server
+so I could automate my servers through IRC, I thought why not write it in [Perl][1]. I've remembered that person who was always bragging about [Perl][1]'s greatness wrote an IRC bot in [Perl][1]
+using [POE::Component::IRC][2] so I've decided to try and use the same framework for my bot. It's based on really popular [POE][3] event loop framework which is very easy to learn and use.
 **Matt Cashner** wrote a really good introduction article called [Application Design with POE](http://www.perl.com/pub/2004/07/02/poeintro.html)
 
 <!-- more -->
 
 The whole code for my bot is just 500 lines and is available from this repository [shellbot](https://github.com/troydm/shellbot).
-I'm going to walk through a key concepts that are essential for writing an irc bot in [POCO::IRC][2] using my bot's source code as a reference.
+I'm going to walk through a key concepts that are essential for writing an IRC bot in [POCO::IRC][2] using my bot's source code as a reference.
 
 ![Chobits](http://i.imgur.com/kiqhDBH.jpg)
 
 Before we'll start our [Perl][1] IRC bot we need some way to store configuration for it. Since [CPAN][4] has lots of modules that deal with configuration the choice wasn't an easy one but 
-i've decided to use [YAML](https://metacpan.org/module/YAML) which is module for loading [YAML][5] data into [Perl][1] that can work the other way too. [YAML][5] is a simple markup language
-that is perfect for storing configuration and it's really quick to learn. For loading YAML configuration i've used **LoadFile** function and to store [Perl][1] data back into file i've used **DumpFile** function.
-Just two simple functions that do all the complex work work for me. Since i wanted to store commands in the same file i just used [Perl][1]'s list construct to specify that i'm loading two seperate [YAML][5] documents.
+I've decided to use [YAML](https://metacpan.org/module/YAML) which is module for loading [YAML][5] data into [Perl][1] that can work the other way too. [YAML][5] is a simple markup language
+that is perfect for storing configuration and it's really quick to learn. For loading YAML configuration I've used **LoadFile** function and to store [Perl][1] data back into file I've used **DumpFile** function.
+Just two simple functions that do all the complex work work for me. Since I wanted to store commands in the same file I just used [Perl][1]'s list construct to specify that I'm loading two separate [YAML][5] documents.
 
 {% codeblock lang:perl %}
 # Loading configuration 
@@ -41,7 +41,7 @@ my ($config, $commands) = LoadFile($config_file);
 DumpFile($config_file, ($config, $commands));
 {% endcodeblock %}
 
-Next step is to create POE Session and start event loop. Note that since my module is named Shellbot i need to specify it otherwise event loop won't be able to call functions.
+Next step is to create POE Session and start event loop. Note that since my module is named Shellbot I need to specify it otherwise event loop won't be able to call functions.
 Each of this functions are called by [POE][3] when specified events occur and all the bot logic is handled by those functions.
 
 {% codeblock lang:perl %}
@@ -57,11 +57,11 @@ POE::Kernel->run();
 
 First event that is executed after the POE event loop starts is **_start** event so we need to initialize bot
 state in that event. Also since [POCO::IRC][2] comes with some essential plugins and is modular by itself we can take advantage of this.
-Instead of manually making bot reconnect when it looses connection with server i've used [Connector](https://metacpan.org/module/POE::Component::IRC::Plugin::Connector) plugin.
-If we want our bot to automaticly join some channel we can use [AutoJoin](https://metacpan.org/module/POE::Component::IRC::Plugin::AutoJoin) plugin.
-And to easily handle when someone addresses bot i've used [BotAddressed](https://metacpan.org/module/POE::Component::IRC::Plugin::BotAddressed) plugin. 
-Since i wanted my bot to handle commands i could have used [BotCommand](https://metacpan.org/module/POE::Component::IRC::Plugin::BotCommand) plugin however i wanted my bot 
-to have two modes of commands so i've decided to write bot command handling functions manually.
+Instead of manually making bot reconnect when it looses connection with server I've used [Connector](https://metacpan.org/module/POE::Component::IRC::Plugin::Connector) plugin.
+If we want our bot to automatically join some channel we can use [AutoJoin](https://metacpan.org/module/POE::Component::IRC::Plugin::AutoJoin) plugin.
+And to easily handle when someone addresses bot I've used [BotAddressed](https://metacpan.org/module/POE::Component::IRC::Plugin::BotAddressed) plugin. 
+Since I wanted my bot to handle commands I could have used [BotCommand](https://metacpan.org/module/POE::Component::IRC::Plugin::BotCommand) plugin however I wanted my bot 
+to have two modes of commands so I've decided to write bot command handling functions manually.
 
 {% codeblock lang:perl %}
 my $irc = POE::Component::IRC::State->spawn(%opts);
@@ -111,7 +111,7 @@ sub irc_bot_addressed {
 }
 {% endcodeblock %}
 
-Before bot accepts a command we need some way to check if person who is issuing a command is authorized to do so. I'm doing a simple check of full irc name
+Before bot accepts a command we need some way to check if person who is issuing a command is authorized to do so. I'm doing a simple check of full IRC name
 that can be specified in configuration list option **authorizations**
 
 {% codeblock lang:perl %}
@@ -122,7 +122,7 @@ sub is_authorized {
 {% endcodeblock %}
 
 All that is left is to match commands in **msg_recieved** using [Perl][1]'s [regex](http://perldoc.perl.org/perlre.html). This part is just a long series of bot command logic
-and **if** **elsif** **else** statements so i won't reference them here. Also the key function is **run_job** which executes prestored shell script. It creates a temporary file that
+and **if** **elsif** **else** statements so I won't reference them here. Also the key function is **run_job** which executes pre-stored shell script. It creates a temporary file that
 is executed using a shell
 
 {% codeblock lang:perl %}
@@ -161,13 +161,13 @@ my $job = POE::Wheel::Run->new(
 That's all there is to it. To install and trying it out just look through a [readme](https://github.com/troydm/shellbot/blob/master/README.md)
 
 Offcourse making a temporary shell script and executing it is generally unsafe. Also there is security concern
-that bot can be somehow hacked and commanded by unathorized nick but i'm not sure how can this be done without changing vhost.
-That is why i called this bot a potentially unsafe. If anyone can find any security holes please do pull request or just email me patch.
+that bot can be somehow hacked and commanded by unauthorized nick but I'm not sure how can this be done without changing vhost.
+That is why I called this bot a potentially unsafe. If anyone can find any security holes please do pull request or just email me patch.
 
-To make this bot little more secure we need to make him connect to irc using SSL. For this i'll walk through a general steps for configuring
+To make this bot little more secure we need to make him connect to IRC using SSL. For this I'll walk through a general steps for configuring
 [CertFP](https://www.freenode.net/certfp/) and generating self signed certificate for [Freenode](https://www.freenode.net/) as an example.
 First step is to register your bot's nick with [NickServ](https://blog.freenode.net/2007/03/nickserv-is-your-friend/). 
-Choose a nickname for your bot and start it up. Ask your bot to register with NickServ by private messaging him on irc.
+Choose a nickname for your bot and start it up. Ask your bot to register with NickServ by private messaging him on IRC.
 {% codeblock %}
 /msg botnick msg NickServ REGISTER nickservpass email@address.com
 {% endcodeblock %}
