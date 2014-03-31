@@ -9,8 +9,7 @@
   <meta name="author" content="Dmitry Geurkov">
 
   
-  <meta name="description" content="Recently i&rsquo;ve been interested in Logic Programming, notably in learning Prolog
-so i&rsquo;m in a process of reading two great books, &hellip;">
+  <meta name="description" content="At one point or another every single software developer in the world comes to a realization in his career when the time is ripe and it&rsquo;s time &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -74,6 +73,60 @@ so i&rsquo;m in a process of reading two great books, &hellip;">
       
   <header>
     
+      <h1 class="entry-title"><a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-29T19:12:25+04:00" pubdate data-updated="true">Mar 29<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>At one point or another every single software developer in the world comes to a realization in his career when the time is ripe and it&rsquo;s time
+to write your own super cool programming language.</p>
+
+<p><img src="http://i.imgur.com/KSiXBCN.png" alt="Lemon Loli" /></p>
+
+<p>However the subject of creating your own programming language with an compiler is quite a complex one and can&rsquo;t be tackled without some pre-research.
+That&rsquo;s how I&rsquo;ve started reading <a href="http://www.amazon.com/Crafting-Compiler-Charles-N-Fischer/dp/0805321667/">Crafting Compiler in C</a>, an aged but
+really comprehensive book about developing your own compiler for an <a href="http://en.wikipedia.org/wiki/Ada_%28programming_language%29">Ada</a>-like programming language.
+Second chapter describes writing a really simple micro language targeting pseudo assembly-like output in order to explain the core concepts of developing your
+own compiler and writing an <a href="https://en.wikipedia.org/wiki/LL_parser">LL(1)</a> parser.</p>
+
+<p>Let&rsquo;s try rewriting this micro compiler in <a href="http://ocaml.org/">OCaml</a>, a language better suited for writing compilers that is becoming quite popular due to it&rsquo;s clean syntax and strict evaluation semantics combined
+with functional and object-oriented programming styles. If you are not familiar with OCaml try reading <a href="https://realworldocaml.org/">Real World OCaml</a> first.
+Instead of outputting pseudo assembly our micro compiler will output a real <a href="http://www.nasm.us/">nasm</a> source code which will be automatically compiled into a binary executable file.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/blog/2014/01/26/making-30-years-old-pascal-code-run-again/">Making 30 Years Old Pascal Code Run Again</a></h1>
     
     
@@ -97,15 +150,15 @@ so i&rsquo;m in a process of reading two great books, &hellip;">
   </header>
 
 
-  <div class="entry-content"><p>Recently i&rsquo;ve been interested in <a href="https://en.wikipedia.org/wiki/Logic_programming">Logic Programming</a>, notably in learning <a href="https://en.wikipedia.org/wiki/Prolog">Prolog</a>
-so i&rsquo;m in a process of reading two great books, <a href="http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/">Programming for Artificial Intelligence</a> and
-<a href="http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/">The Art of Prolog</a>. If you want to get a quick feel of <em>Prolog</em> i recommend you take a look at
+  <div class="entry-content"><p>Recently I&rsquo;ve been interested in <a href="https://en.wikipedia.org/wiki/Logic_programming">Logic Programming</a>, notably in learning <a href="https://en.wikipedia.org/wiki/Prolog">Prolog</a>
+so I&rsquo;m in a process of reading two great books, <a href="http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/">Programming for Artificial Intelligence</a> and
+<a href="http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/">The Art of Prolog</a>. If you want to get a quick feel of <em>Prolog</em> I recommend you take a look at
 Bernardo Pires&rsquo;s <a href="https://bernardopires.com/2013/10/try-logic-programming-a-gentle-introduction-to-prolog/">Gentle Introduction to Prolog</a> and <a href="http://prologomenon.wordpress.com/">Prologomenon</a> blog.
 To put it simply <em>Prolog</em> is all about logic, deduction and backtracking</p>
 
 <p><img src="http://i.imgur.com/Mwlmvyk.jpg" alt="Sherlock Loli" /></p>
 
-<p>While browsing <a href="http://reddit.com/r/prolog">/r/prolog</a> i&rsquo;ve stumbbled upon <a href="https://sites.google.com/site/prologforprogrammers/">Prolog for Programmers</a> originally published in 1985, an old book indeed
+<p>While browsing <a href="http://reddit.com/r/prolog">/r/prolog</a> I&rsquo;ve stumbled upon <a href="https://sites.google.com/site/prologforprogrammers/">Prolog for Programmers</a> originally published in 1985, an old book indeed
 and honestly sometimes hard to follow. I can&rsquo;t recommend it as a starter book about <em>Prolog</em> but it&rsquo;s still quite interesting to read. However it has a whole two chapters describing implementation of
 <em>Prolog</em> interpreter which is quite a complex task and sparkled my interest in continuing reading this book. Authors provide source code of two version of Prolog interpreter,
 the one they originally wrote in <em>Pascal</em> back in 1983 and it&rsquo;s port to <em>C</em> in 2013 which, as stated on their website, was done because they couldn&rsquo;t compile old <em>Pascal</em> code
@@ -174,7 +227,7 @@ Second requirement is determined by constantly changing business rules imposed o
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writting IRC Bot Using Perl 5 and POCO::IRC</a></h1>
+      <h1 class="entry-title"><a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writing IRC Bot Using Perl 5 and POCO::IRC</a></h1>
     
     
       <p class="meta">
@@ -198,18 +251,18 @@ Second requirement is determined by constantly changing business rules imposed o
 
 
   <div class="entry-content"><p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don&rsquo;t.
-It was invented a really long time ago and isn&rsquo;t going away anytime soon despite some new generation alternatives poping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
+It was invented a really long time ago and isn&rsquo;t going away anytime soon despite some new generation alternatives popping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
 
-<p>Personally i always have my irc client running (i&rsquo;m using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
-who inspire me to try new technologies and learn something different every day. One person, who&rsquo;s nick i won&rsquo;t name, was always telling me about how awesome <a href="http://perl.org/" title="Perl">Perl</a>
+<p>Personally I always have my IRC client running (I&rsquo;m using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
+who inspire me to try new technologies and learn something different every day. One person, who&rsquo;s nickname I won&rsquo;t name, was always telling me about how awesome <a href="http://perl.org/" title="Perl">Perl</a>
 as a programming language is and how great it&rsquo;s potential is thanks to <a href="http://cpan.org" title="CPAN">CPAN</a> that has almost 124k modules for any life situation.
-I always thought he was exaggerating and literally acting like a <a href="http://perl.org/" title="Perl">Perl</a> fanboy. <a href="http://perl.org/" title="Perl">Perl</a> was the first programming language i&rsquo;ve learned back in the late 90&rsquo;s
-and remembering how frustuating my experience with it was and how cryptic it really was for me do something with it when i was unexperienced and lacked lots of qualities that make up a
-any decent software engineer i was skeptic about using it again.
-Well, time passed, time always passes, and i haven&rsquo;t written anything more than quick 50 line server scripts in <a href="http://perl.org/" title="Perl">Perl</a> for almost 13 years.
-I&rsquo;ve almost forgotten everything about <a href="http://perl.org/" title="Perl">Perl</a>. Since lately i was having this crazy idea about writing irc bot that could store and execute shell scripts on server
-so i could automate my servers through irc, i thought why not write it in <a href="http://perl.org/" title="Perl">Perl</a>. I&rsquo;ve remembered that person who was always bragging about <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s greatness wrote an irc bot in <a href="http://perl.org/" title="Perl">Perl</a>
-using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE::Component::IRC</a> so i&rsquo;ve decided to try and use the same framework for my bot. It&rsquo;s based on really popular <a href="https://metacpan.org/module/POE" title="POE">POE</a> event loop framework which is very easy to learn and use.
+I always thought he was exaggerating and literally acting like a <a href="http://perl.org/" title="Perl">Perl</a> fanboy. <a href="http://perl.org/" title="Perl">Perl</a> was the first programming language I&rsquo;ve learned back in the late 90&rsquo;s
+and remembering how frustrating my experience with it was and how cryptic it really was for me do something with it when I was unexperienced and lacked lots of qualities that make up a
+any decent software engineer I was skeptic about using it again.
+Well, time passed, time always passes, and I haven&rsquo;t written anything more than quick 50 line server scripts in <a href="http://perl.org/" title="Perl">Perl</a> for almost 13 years.
+I&rsquo;ve almost forgotten everything about <a href="http://perl.org/" title="Perl">Perl</a>. Since lately I was having this crazy idea about writing IRC bot that could store and execute shell scripts on server
+so I could automate my servers through IRC, I thought why not write it in <a href="http://perl.org/" title="Perl">Perl</a>. I&rsquo;ve remembered that person who was always bragging about <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s greatness wrote an IRC bot in <a href="http://perl.org/" title="Perl">Perl</a>
+using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE::Component::IRC</a> so I&rsquo;ve decided to try and use the same framework for my bot. It&rsquo;s based on really popular <a href="https://metacpan.org/module/POE" title="POE">POE</a> event loop framework which is very easy to learn and use.
 <strong>Matt Cashner</strong> wrote a really good introduction article called <a href="http://www.perl.com/pub/2004/07/02/poeintro.html">Application Design with POE</a></p>
 
 </div>
@@ -251,9 +304,9 @@ using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC
   </header>
 
 
-  <div class="entry-content"><p>Evar wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
+  <div class="entry-content"><p>Ever wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
 
-<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won&rsquo;t consider them here!
+<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but I won&rsquo;t consider them here!
 So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?</p>
 
 <p>Oh you don&rsquo;t? Snap it&rsquo;s it&rsquo;s so useful that nowadays almost everyone has some kind of NAS that he/she is using for file storage and torrents.
@@ -293,6 +346,10 @@ So if you don&rsquo;t have one then you are behind of times</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2014/01/26/making-30-years-old-pascal-code-run-again/">Making 30 years old Pascal code run again</a>
       </li>
     
@@ -301,7 +358,7 @@ So if you don&rsquo;t have one then you are behind of times</p>
       </li>
     
       <li class="post">
-        <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writting IRC Bot using Perl 5 and POCO::IRC</a>
+        <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writing IRC Bot using Perl 5 and POCO::IRC</a>
       </li>
     
       <li class="post">

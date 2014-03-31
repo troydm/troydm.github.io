@@ -9,7 +9,7 @@
   <meta name="author" content="Dmitry Geurkov">
 
   
-  <meta name="description" content="Evar wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server? BitTorrent to &hellip;">
+  <meta name="description" content="Ever wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server? BitTorrent to &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -93,9 +93,9 @@
   </header>
 
 
-<div class="entry-content"><p>Evar wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
+<div class="entry-content"><p>Ever wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
 
-<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but i won&rsquo;t consider them here!
+<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but I won&rsquo;t consider them here!
 So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?</p>
 
 <p>Oh you don&rsquo;t? Snap it&rsquo;s it&rsquo;s so useful that nowadays almost everyone has some kind of NAS that he/she is using for file storage and torrents.
@@ -116,30 +116,29 @@ or you can host your own little pirate bay just for you and your friends only</p
 that has only web interface and no torrent tracker
 So what do we do? We run our own standalone torrent tracker!</p>
 
-<p>So that&rsquo;s how i&rsquo;ve ended on <a href="http://en.wikipedia.org/wiki/Comparison_of_BitTorrent_tracker_software">this page</a></p>
+<p>So that&rsquo;s how I&rsquo;ve ended on <a href="http://en.wikipedia.org/wiki/Comparison_of_BitTorrent_tracker_software">this page</a></p>
 
 <p>My first choice was <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a> which is a very popular tracker that even pirate bay uses on their servers.
-First thing i did i&rsquo;ve compiled and configured it in few mins and had it running on my <strong>6969</strong> port.
-So i&rsquo;ve port forwarded my router&rsquo;s external ip <strong>6969</strong> port to my NAS box&rsquo;s port and checked if i could access it remotely!
-So the next thing i&rsquo;ve created a torrent with my torrent tracker announce url specified as **<a href="http://192.168.0.x:6969/announce**">http://192.168.0.x:6969/announce**</a> using <a href="http://mktorrent.sourceforge.net/">mktorrent</a>
-and added it to my torrent client which started seeding it right away. The next step i&rsquo;ve created the same torrent file with announce url changed to my external ip and sent it to my friend!
+First thing I did I&rsquo;ve compiled and configured it in few mins and had it running on my <strong>6969</strong> port.
+So the next thing I&rsquo;ve created a torrent with my torrent tracker announce url specified as **<a href="http://192.168.0.x:6969/announce**">http://192.168.0.x:6969/announce**</a> using <a href="http://mktorrent.sourceforge.net/">mktorrent</a>
+and added it to my torrent client which started seeding it right away. The next step I&rsquo;ve created the same torrent file with announce url changed to my external ip and sent it to my friend!
 My friend started his torrent client and added the torrent. He could see that it had one seeder but still couldn&rsquo;t download the file. Simple troubleshooting revealed that my torrent tracker
 was listing my seeder peer with a local network ip address that my friend&rsquo;s torrent client couldn&rsquo;t connect to&hellip;</p>
 
 <p><img src="http://i.imgur.com/TCYjoCe.jpg" alt="Crying Loli" /></p>
 
-<p>I knew now what i needed from torrent tracker. My port was the same but my ip address should be external instead of internal.
-I needed local ip subsituted with remote ip for all external network peers. The peer port would remain the same since i have the same port forwarded.</p>
+<p>I knew now what I needed from torrent tracker. My port was the same but my ip address should be external instead of internal.
+I needed local ip substituted with remote ip for all external network peers. The peer port would remain the same since i have the same port forwarded.</p>
 
-<p>Unfortunately i couldn&rsquo;t find any functionality in <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a> that would do that :(</p>
+<p>Unfortunately I couldn&rsquo;t find any functionality in <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a> that would do that :(</p>
 
-<p>So next thing i did i&rsquo;ve downloaded <a href="https://code.google.com/p/udpt/">udpt</a> and had it compiled.
+<p>So next thing I did I&rsquo;ve downloaded <a href="https://code.google.com/p/udpt/">udpt</a> and had it compiled.
 It uses <a href="http://www.bittorrent.org/beps/bep_0015.html">udp tracker protocol</a> which is much more
-network effecient. <a href="https://code.google.com/p/udpt/">udpt</a> is much more smaller than <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a>
+network efficient. <a href="https://code.google.com/p/udpt/">udpt</a> is much more smaller than <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a>
 in both source code and functionality and thus was ideal to experiment with.</p>
 
-<p>Adding the needed functionality didn&rsquo;t solved my problem because udpt had some other bugs that i had to track down but in a few hours i had everything up and working!
-In the end i had a fully working private torrent tracker that was doing what i was hoping for.
+<p>Adding the needed functionality didn&rsquo;t solved my problem because udpt had some other bugs that I had to track down but in a few hours i had everything up and working!
+In the end I had a fully working private torrent tracker that was doing what I was hoping for.
 I&rsquo;ve even added code to run it as linux daemon thanks to <a href="http://www.netzmafia.de/skripten/unix/linux-daemon-howto.html">this little howto</a></p>
 
 <p>My experimental fork is at <a href="https://github.com/troydm/udpt">this repository</a></p>
@@ -193,7 +192,7 @@ I&rsquo;ve even added code to run it as linux daemon thanks to <a href="http://w
     <p class="meta">
       
       
-        <a class="basic-alignment right" href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/" title="Next Post: Writting IRC Bot using Perl 5 and POCO::IRC">Writting IRC Bot using Perl 5 and POCO::IRC &raquo;</a>
+        <a class="basic-alignment right" href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/" title="Next Post: Writing IRC Bot using Perl 5 and POCO::IRC">Writing IRC Bot using Perl 5 and POCO::IRC &raquo;</a>
       
     </p>
   </footer>
@@ -222,6 +221,10 @@ I&rsquo;ve even added code to run it as linux daemon thanks to <a href="http://w
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2014/01/26/making-30-years-old-pascal-code-run-again/">Making 30 years old Pascal code run again</a>
       </li>
     
@@ -230,7 +233,7 @@ I&rsquo;ve even added code to run it as linux daemon thanks to <a href="http://w
       </li>
     
       <li class="post">
-        <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writting IRC Bot using Perl 5 and POCO::IRC</a>
+        <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writing IRC Bot using Perl 5 and POCO::IRC</a>
       </li>
     
       <li class="post">

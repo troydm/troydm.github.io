@@ -4,13 +4,13 @@
         <loc>
             http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/
         </loc>
-        <lastmod>2014-01-29T23:59:13+04:00</lastmod>
+        <lastmod>2014-03-29T20:53:25+04:00</lastmod>
     </url>
     <url>
         <loc>
             http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/
         </loc>
-        <lastmod>2014-01-29T23:59:13+04:00</lastmod>
+        <lastmod>2014-03-29T20:59:42+04:00</lastmod>
     </url>
     <url>
         <loc>
@@ -22,11 +22,15 @@
         <loc>
             http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again/
         </loc>
-        <lastmod>2014-01-29T23:59:13+04:00</lastmod>
+        <lastmod>2014-03-29T21:02:06+04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/</loc>
+        <lastmod>2014-03-31T16:33:55+04:00</lastmod>
     </url>
     <url>
         <loc>http://troydm.github.io/</loc>
-        <lastmod>2014-01-29T23:59:13+04:00</lastmod>
+        <lastmod>2014-03-31T16:33:55+04:00</lastmod>
     </url>
     <url>
         <loc>http://troydm.github.io/robots.txt</loc>
@@ -34,7 +38,7 @@
     </url>
     <url>
         <loc>http://troydm.github.io/blog/archives/</loc>
-        <lastmod>2014-01-29T23:59:13+04:00</lastmod>
+        <lastmod>2014-03-31T16:33:55+04:00</lastmod>
     </url>
     <url>
         <loc>http://troydm.github.io/about/</loc>

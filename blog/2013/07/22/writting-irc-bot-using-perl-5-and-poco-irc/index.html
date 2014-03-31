@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Writting IRC Bot using Perl 5 and POCO::IRC - Troydm's Blog</title>
+  <title>Writing IRC Bot using Perl 5 and POCO::IRC - Troydm's Blog</title>
   <meta name="author" content="Dmitry Geurkov">
 
   
@@ -71,7 +71,7 @@ It was invented a really long time ago and isn&rsquo;t going away anytime soon d
   
   <header>
     
-      <h1 class="entry-title">Writting IRC Bot Using Perl 5 and POCO::IRC</h1>
+      <h1 class="entry-title">Writing IRC Bot Using Perl 5 and POCO::IRC</h1>
     
     
       <p class="meta">
@@ -95,32 +95,32 @@ It was invented a really long time ago and isn&rsquo;t going away anytime soon d
 
 
 <div class="entry-content"><p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don&rsquo;t.
-It was invented a really long time ago and isn&rsquo;t going away anytime soon despite some new generation alternatives poping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
+It was invented a really long time ago and isn&rsquo;t going away anytime soon despite some new generation alternatives popping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
 
-<p>Personally i always have my irc client running (i&rsquo;m using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
-who inspire me to try new technologies and learn something different every day. One person, who&rsquo;s nick i won&rsquo;t name, was always telling me about how awesome <a href="http://perl.org/" title="Perl">Perl</a>
+<p>Personally I always have my IRC client running (I&rsquo;m using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
+who inspire me to try new technologies and learn something different every day. One person, who&rsquo;s nickname I won&rsquo;t name, was always telling me about how awesome <a href="http://perl.org/" title="Perl">Perl</a>
 as a programming language is and how great it&rsquo;s potential is thanks to <a href="http://cpan.org" title="CPAN">CPAN</a> that has almost 124k modules for any life situation.
-I always thought he was exaggerating and literally acting like a <a href="http://perl.org/" title="Perl">Perl</a> fanboy. <a href="http://perl.org/" title="Perl">Perl</a> was the first programming language i&rsquo;ve learned back in the late 90&rsquo;s
-and remembering how frustuating my experience with it was and how cryptic it really was for me do something with it when i was unexperienced and lacked lots of qualities that make up a
-any decent software engineer i was skeptic about using it again.
-Well, time passed, time always passes, and i haven&rsquo;t written anything more than quick 50 line server scripts in <a href="http://perl.org/" title="Perl">Perl</a> for almost 13 years.
-I&rsquo;ve almost forgotten everything about <a href="http://perl.org/" title="Perl">Perl</a>. Since lately i was having this crazy idea about writing irc bot that could store and execute shell scripts on server
-so i could automate my servers through irc, i thought why not write it in <a href="http://perl.org/" title="Perl">Perl</a>. I&rsquo;ve remembered that person who was always bragging about <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s greatness wrote an irc bot in <a href="http://perl.org/" title="Perl">Perl</a>
-using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE::Component::IRC</a> so i&rsquo;ve decided to try and use the same framework for my bot. It&rsquo;s based on really popular <a href="https://metacpan.org/module/POE" title="POE">POE</a> event loop framework which is very easy to learn and use.
+I always thought he was exaggerating and literally acting like a <a href="http://perl.org/" title="Perl">Perl</a> fanboy. <a href="http://perl.org/" title="Perl">Perl</a> was the first programming language I&rsquo;ve learned back in the late 90&rsquo;s
+and remembering how frustrating my experience with it was and how cryptic it really was for me do something with it when I was unexperienced and lacked lots of qualities that make up a
+any decent software engineer I was skeptic about using it again.
+Well, time passed, time always passes, and I haven&rsquo;t written anything more than quick 50 line server scripts in <a href="http://perl.org/" title="Perl">Perl</a> for almost 13 years.
+I&rsquo;ve almost forgotten everything about <a href="http://perl.org/" title="Perl">Perl</a>. Since lately I was having this crazy idea about writing IRC bot that could store and execute shell scripts on server
+so I could automate my servers through IRC, I thought why not write it in <a href="http://perl.org/" title="Perl">Perl</a>. I&rsquo;ve remembered that person who was always bragging about <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s greatness wrote an IRC bot in <a href="http://perl.org/" title="Perl">Perl</a>
+using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POE::Component::IRC</a> so I&rsquo;ve decided to try and use the same framework for my bot. It&rsquo;s based on really popular <a href="https://metacpan.org/module/POE" title="POE">POE</a> event loop framework which is very easy to learn and use.
 <strong>Matt Cashner</strong> wrote a really good introduction article called <a href="http://www.perl.com/pub/2004/07/02/poeintro.html">Application Design with POE</a></p>
 
 <!-- more -->
 
 
 <p>The whole code for my bot is just 500 lines and is available from this repository <a href="https://github.com/troydm/shellbot">shellbot</a>.
-I&rsquo;m going to walk through a key concepts that are essential for writing an irc bot in <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POCO::IRC</a> using my bot&rsquo;s source code as a reference.</p>
+I&rsquo;m going to walk through a key concepts that are essential for writing an IRC bot in <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POCO::IRC</a> using my bot&rsquo;s source code as a reference.</p>
 
 <p><img src="http://i.imgur.com/kiqhDBH.jpg" alt="Chobits" /></p>
 
 <p>Before we&rsquo;ll start our <a href="http://perl.org/" title="Perl">Perl</a> IRC bot we need some way to store configuration for it. Since <a href="http://cpan.org" title="CPAN">CPAN</a> has lots of modules that deal with configuration the choice wasn&rsquo;t an easy one but
-i&rsquo;ve decided to use <a href="https://metacpan.org/module/YAML">YAML</a> which is module for loading <a href="http://yaml.org" title="YAML">YAML</a> data into <a href="http://perl.org/" title="Perl">Perl</a> that can work the other way too. <a href="http://yaml.org" title="YAML">YAML</a> is a simple markup language
-that is perfect for storing configuration and it&rsquo;s really quick to learn. For loading YAML configuration i&rsquo;ve used <strong>LoadFile</strong> function and to store <a href="http://perl.org/" title="Perl">Perl</a> data back into file i&rsquo;ve used <strong>DumpFile</strong> function.
-Just two simple functions that do all the complex work work for me. Since i wanted to store commands in the same file i just used <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s list construct to specify that i&rsquo;m loading two seperate <a href="http://yaml.org" title="YAML">YAML</a> documents.</p>
+I&rsquo;ve decided to use <a href="https://metacpan.org/module/YAML">YAML</a> which is module for loading <a href="http://yaml.org" title="YAML">YAML</a> data into <a href="http://perl.org/" title="Perl">Perl</a> that can work the other way too. <a href="http://yaml.org" title="YAML">YAML</a> is a simple markup language
+that is perfect for storing configuration and it&rsquo;s really quick to learn. For loading YAML configuration I&rsquo;ve used <strong>LoadFile</strong> function and to store <a href="http://perl.org/" title="Perl">Perl</a> data back into file I&rsquo;ve used <strong>DumpFile</strong> function.
+Just two simple functions that do all the complex work work for me. Since I wanted to store commands in the same file I just used <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s list construct to specify that I&rsquo;m loading two separate <a href="http://yaml.org" title="YAML">YAML</a> documents.</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -135,7 +135,7 @@ Just two simple functions that do all the complex work work for me. Since i want
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>Next step is to create POE Session and start event loop. Note that since my module is named Shellbot i need to specify it otherwise event loop won&rsquo;t be able to call functions.
+<p>Next step is to create POE Session and start event loop. Note that since my module is named Shellbot I need to specify it otherwise event loop won&rsquo;t be able to call functions.
 Each of this functions are called by <a href="https://metacpan.org/module/POE" title="POE">POE</a> when specified events occur and all the bot logic is handled by those functions.</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -159,11 +159,11 @@ Each of this functions are called by <a href="https://metacpan.org/module/POE" t
 
 <p>First event that is executed after the POE event loop starts is <strong>_start</strong> event so we need to initialize bot
 state in that event. Also since <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC">POCO::IRC</a> comes with some essential plugins and is modular by itself we can take advantage of this.
-Instead of manually making bot reconnect when it looses connection with server i&rsquo;ve used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::Connector">Connector</a> plugin.
-If we want our bot to automaticly join some channel we can use <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::AutoJoin">AutoJoin</a> plugin.
-And to easily handle when someone addresses bot i&rsquo;ve used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::BotAddressed">BotAddressed</a> plugin.
-Since i wanted my bot to handle commands i could have used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::BotCommand">BotCommand</a> plugin however i wanted my bot
-to have two modes of commands so i&rsquo;ve decided to write bot command handling functions manually.</p>
+Instead of manually making bot reconnect when it looses connection with server I&rsquo;ve used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::Connector">Connector</a> plugin.
+If we want our bot to automatically join some channel we can use <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::AutoJoin">AutoJoin</a> plugin.
+And to easily handle when someone addresses bot I&rsquo;ve used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::BotAddressed">BotAddressed</a> plugin.
+Since I wanted my bot to handle commands I could have used <a href="https://metacpan.org/module/POE::Component::IRC::Plugin::BotCommand">BotCommand</a> plugin however I wanted my bot
+to have two modes of commands so I&rsquo;ve decided to write bot command handling functions manually.</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -252,7 +252,7 @@ both <strong>irc_msg</strong> and <strong>irc_bot_addressed</strong> events unif
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>Before bot accepts a command we need some way to check if person who is issuing a command is authorized to do so. I&rsquo;m doing a simple check of full irc name
+<p>Before bot accepts a command we need some way to check if person who is issuing a command is authorized to do so. I&rsquo;m doing a simple check of full IRC name
 that can be specified in configuration list option <strong>authorizations</strong></p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -267,7 +267,7 @@ that can be specified in configuration list option <strong>authorizations</stron
 
 
 <p>All that is left is to match commands in <strong>msg_recieved</strong> using <a href="http://perl.org/" title="Perl">Perl</a>&rsquo;s <a href="http://perldoc.perl.org/perlre.html">regex</a>. This part is just a long series of bot command logic
-and <strong>if</strong> <strong>elsif</strong> <strong>else</strong> statements so i won&rsquo;t reference them here. Also the key function is <strong>run_job</strong> which executes prestored shell script. It creates a temporary file that
+and <strong>if</strong> <strong>elsif</strong> <strong>else</strong> statements so I won&rsquo;t reference them here. Also the key function is <strong>run_job</strong> which executes pre-stored shell script. It creates a temporary file that
 is executed using a shell</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -332,13 +332,13 @@ and output from shell is received on <strong>got_job_stdout</strong> and <strong
 <p>That&rsquo;s all there is to it. To install and trying it out just look through a <a href="https://github.com/troydm/shellbot/blob/master/README.md">readme</a></p>
 
 <p>Offcourse making a temporary shell script and executing it is generally unsafe. Also there is security concern
-that bot can be somehow hacked and commanded by unathorized nick but i&rsquo;m not sure how can this be done without changing vhost.
-That is why i called this bot a potentially unsafe. If anyone can find any security holes please do pull request or just email me patch.</p>
+that bot can be somehow hacked and commanded by unauthorized nick but I&rsquo;m not sure how can this be done without changing vhost.
+That is why I called this bot a potentially unsafe. If anyone can find any security holes please do pull request or just email me patch.</p>
 
-<p>To make this bot little more secure we need to make him connect to irc using SSL. For this i&rsquo;ll walk through a general steps for configuring
+<p>To make this bot little more secure we need to make him connect to IRC using SSL. For this I&rsquo;ll walk through a general steps for configuring
 <a href="https://www.freenode.net/certfp/">CertFP</a> and generating self signed certificate for <a href="https://www.freenode.net/">Freenode</a> as an example.
 First step is to register your bot&rsquo;s nick with <a href="https://blog.freenode.net/2007/03/nickserv-is-your-friend/">NickServ</a>.
-Choose a nickname for your bot and start it up. Ask your bot to register with NickServ by private messaging him on irc.</p>
+Choose a nickname for your bot and start it up. Ask your bot to register with NickServ by private messaging him on IRC.</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ REGISTER nickservpass email@address.com</span></code></pre></td></tr></table></div></figure>
@@ -468,6 +468,10 @@ Just look how many modules are released on <a href="http://cpan.org" title="CPAN
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2014/01/26/making-30-years-old-pascal-code-run-again/">Making 30 years old Pascal code run again</a>
       </li>
     
@@ -476,7 +480,7 @@ Just look how many modules are released on <a href="http://cpan.org" title="CPAN
       </li>
     
       <li class="post">
-        <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writting IRC Bot using Perl 5 and POCO::IRC</a>
+        <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writing IRC Bot using Perl 5 and POCO::IRC</a>
       </li>
     
       <li class="post">

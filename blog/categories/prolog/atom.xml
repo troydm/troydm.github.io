@@ -4,7 +4,7 @@
   <title><![CDATA[Category: prolog | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/prolog/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2014-03-09T16:13:53+04:00</updated>
+  <updated>2014-03-31T16:35:24+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -18,15 +18,15 @@
     <link href="http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again/"/>
     <updated>2014-01-26T22:48:00+04:00</updated>
     <id>http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again</id>
-    <content type="html"><![CDATA[<p>Recently i&rsquo;ve been interested in <a href="https://en.wikipedia.org/wiki/Logic_programming">Logic Programming</a>, notably in learning <a href="https://en.wikipedia.org/wiki/Prolog">Prolog</a>
-so i&rsquo;m in a process of reading two great books, <a href="http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/">Programming for Artificial Intelligence</a> and
-<a href="http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/">The Art of Prolog</a>. If you want to get a quick feel of <em>Prolog</em> i recommend you take a look at
+    <content type="html"><![CDATA[<p>Recently I&rsquo;ve been interested in <a href="https://en.wikipedia.org/wiki/Logic_programming">Logic Programming</a>, notably in learning <a href="https://en.wikipedia.org/wiki/Prolog">Prolog</a>
+so I&rsquo;m in a process of reading two great books, <a href="http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/">Programming for Artificial Intelligence</a> and
+<a href="http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/">The Art of Prolog</a>. If you want to get a quick feel of <em>Prolog</em> I recommend you take a look at
 Bernardo Pires&rsquo;s <a href="https://bernardopires.com/2013/10/try-logic-programming-a-gentle-introduction-to-prolog/">Gentle Introduction to Prolog</a> and <a href="http://prologomenon.wordpress.com/">Prologomenon</a> blog.
 To put it simply <em>Prolog</em> is all about logic, deduction and backtracking</p>
 
 <p><img src="http://i.imgur.com/Mwlmvyk.jpg" alt="Sherlock Loli" /></p>
 
-<p>While browsing <a href="http://reddit.com/r/prolog">/r/prolog</a> i&rsquo;ve stumbbled upon <a href="https://sites.google.com/site/prologforprogrammers/">Prolog for Programmers</a> originally published in 1985, an old book indeed
+<p>While browsing <a href="http://reddit.com/r/prolog">/r/prolog</a> I&rsquo;ve stumbled upon <a href="https://sites.google.com/site/prologforprogrammers/">Prolog for Programmers</a> originally published in 1985, an old book indeed
 and honestly sometimes hard to follow. I can&rsquo;t recommend it as a starter book about <em>Prolog</em> but it&rsquo;s still quite interesting to read. However it has a whole two chapters describing implementation of
 <em>Prolog</em> interpreter which is quite a complex task and sparkled my interest in continuing reading this book. Authors provide source code of two version of Prolog interpreter,
 the one they originally wrote in <em>Pascal</em> back in 1983 and it&rsquo;s port to <em>C</em> in 2013 which, as stated on their website, was done because they couldn&rsquo;t compile old <em>Pascal</em> code
@@ -1264,7 +1264,7 @@ Since the trail array is empty, so let&rsquo;s add this fix into <em>purgetrail<
 </span><span class='line'>
 </span><span class='line'>&lt;p></span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
-<p>And we did it! It works :) It might have some other bugs since it&rsquo;s an old software but i haven&rsquo;t encountered any more yet.
+<p>And we did it! It works :) It might have some other bugs since it&rsquo;s an old software but I haven&rsquo;t encountered any more yet.
 I&rsquo;ve also ported <em>btoy.p</em> the same way stumbling upon same kind of errors and same <em>purgetrail</em> bug.</p>
 
 <p><img src="http://i.imgur.com/NX5NdN5.png" alt="Hyouka" /></p>

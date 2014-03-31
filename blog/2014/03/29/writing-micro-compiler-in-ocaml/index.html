@@ -1,0 +1,1080 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Writing Micro Compiler in OCaml - Troydm's Blog</title>
+  <meta name="author" content="Dmitry Geurkov">
+
+  
+  <meta name="description" content="At one point or another every single software developer in the world comes to a realization in his career when the time is ripe and it&rsquo;s time &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Troydm's Blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Troydm's Blog</a></h1>
+  
+    <h2>A personal blog about software development</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://ddg.gg/" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:troydm.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="https://github.com/troydm/">Github</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Writing Micro Compiler in OCaml</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-29T19:12:25+04:00" pubdate data-updated="true">Mar 29<span>th</span>, 2014</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>At one point or another every single software developer in the world comes to a realization in his career when the time is ripe and it&rsquo;s time
+to write your own super cool programming language.</p>
+
+<p><img src="http://i.imgur.com/KSiXBCN.png" alt="Lemon Loli" /></p>
+
+<p>However the subject of creating your own programming language with an compiler is quite a complex one and can&rsquo;t be tackled without some pre-research.
+That&rsquo;s how I&rsquo;ve started reading <a href="http://www.amazon.com/Crafting-Compiler-Charles-N-Fischer/dp/0805321667/">Crafting Compiler in C</a>, an aged but
+really comprehensive book about developing your own compiler for an <a href="http://en.wikipedia.org/wiki/Ada_%28programming_language%29">Ada</a>-like programming language.
+Second chapter describes writing a really simple micro language targeting pseudo assembly-like output in order to explain the core concepts of developing your
+own compiler and writing an <a href="https://en.wikipedia.org/wiki/LL_parser">LL(1)</a> parser.</p>
+
+<p>Let&rsquo;s try rewriting this micro compiler in <a href="http://ocaml.org/">OCaml</a>, a language better suited for writing compilers that is becoming quite popular due to it&rsquo;s clean syntax and strict evaluation semantics combined
+with functional and object-oriented programming styles. If you are not familiar with OCaml try reading <a href="https://realworldocaml.org/">Real World OCaml</a> first.
+Instead of outputting pseudo assembly our micro compiler will output a real <a href="http://www.nasm.us/">nasm</a> source code which will be automatically compiled into a binary executable file.</p>
+
+<!--more-->
+
+
+<p>So let&rsquo;s start by describing simple micro language with an example source code</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>begin
+</span><span class='line'>    a := 1;
+</span><span class='line'>    b := a + 1;
+</span><span class='line'>    b := b + 1;
+</span><span class='line'>    write (a,b);
+</span><span class='line'>    read(a,b);
+</span><span class='line'>    write (a+10, b+10);
+</span><span class='line'>end</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see from example source code the program starts with <strong>begin</strong> keyword and ends with an <strong>end</strong> keyword. It has only integer variables which must be predefined by assignment operation before using in expressions, and it also has two simple functions <strong>read</strong> and <strong>write</strong>.</p>
+
+<p><strong>read</strong> takes a list of variable names separated by comma and reads user input from <em>stdin</em> into those variables</p>
+
+<p><strong>write</strong> takes a list of expressions and outputs them into <em>stdout</em></p>
+
+<p>Now in order to create an executable from this source code first we need to parse it. Since LL(1) type parser is enough to parse this kind of language, we&rsquo;ll need only one character lookahead.
+ Unfortunately OCaml doesn&rsquo;t has an unread operation unlike libc&rsquo;s <strong>ungetc</strong> so we&rsquo;ll need to define a simple stream reader which will have a <em>mutable char</em> and we will also count lines of source code read.
+We&rsquo;ll also define two utility functions which we will use later which will check if a character is alphanumeric and if it&rsquo;s a digit.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="c">(* stream *)</span>
+</span><span class='line'><span class="k">type</span> <span class="n">stream</span> <span class="o">=</span> <span class="o">{</span> <span class="k">mutable</span> <span class="n">chr</span><span class="o">:</span> <span class="kt">char</span> <span class="n">option</span><span class="o">;</span> <span class="k">mutable</span> <span class="n">line_num</span><span class="o">:</span> <span class="kt">int</span><span class="o">;</span> <span class="n">chan</span><span class="o">:</span> <span class="n">in_channel</span> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">open_stream</span> <span class="n">file</span> <span class="o">=</span> <span class="o">{</span> <span class="n">chr</span><span class="o">=</span><span class="nc">None</span><span class="o">;</span> <span class="n">line_num</span><span class="o">=</span><span class="mi">1</span><span class="o">;</span> <span class="n">chan</span><span class="o">=</span><span class="n">open_in</span> <span class="n">file</span> <span class="o">}</span>
+</span><span class='line'><span class="k">let</span> <span class="n">close_stream</span> <span class="n">stm</span> <span class="o">=</span> <span class="n">close_in</span> <span class="n">stm</span><span class="o">.</span><span class="n">chan</span>
+</span><span class='line'><span class="k">let</span> <span class="n">read_char</span> <span class="n">stm</span> <span class="o">=</span> <span class="k">match</span> <span class="n">stm</span><span class="o">.</span><span class="n">chr</span> <span class="k">with</span>
+</span><span class='line'>                        <span class="nc">None</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="n">c</span> <span class="o">=</span> <span class="n">input_char</span> <span class="n">stm</span><span class="o">.</span><span class="n">chan</span> <span class="k">in</span>
+</span><span class='line'>                                <span class="k">if</span> <span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;\n&#39;</span> <span class="k">then</span>
+</span><span class='line'>                                    <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">stm</span><span class="o">.</span><span class="n">line_num</span> <span class="o">&lt;-</span> <span class="n">stm</span><span class="o">.</span><span class="n">line_num</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">in</span> <span class="n">c</span>
+</span><span class='line'>                                <span class="k">else</span> <span class="n">c</span>
+</span><span class='line'>                      <span class="o">|</span> <span class="nc">Some</span> <span class="n">c</span> <span class="o">-&gt;</span> <span class="n">stm</span><span class="o">.</span><span class="n">chr</span> <span class="o">&lt;-</span> <span class="nc">None</span><span class="o">;</span> <span class="n">c</span>
+</span><span class='line'><span class="k">let</span> <span class="n">unread_char</span> <span class="n">stm</span> <span class="n">c</span> <span class="o">=</span> <span class="n">stm</span><span class="o">.</span><span class="n">chr</span> <span class="o">&lt;-</span> <span class="nc">Some</span> <span class="n">c</span>
+</span><span class='line'>
+</span><span class='line'><span class="c">(* character *)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">is_digit</span> <span class="n">c</span> <span class="o">=</span> <span class="k">let</span> <span class="n">code</span> <span class="o">=</span> <span class="nn">Char</span><span class="p">.</span><span class="n">code</span> <span class="n">c</span> <span class="k">in</span>
+</span><span class='line'>                 <span class="n">code</span> <span class="o">&gt;=</span> <span class="nn">Char</span><span class="p">.</span><span class="n">code</span><span class="o">(</span><span class="sc">&#39;0&#39;</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">code</span> <span class="o">&lt;=</span> <span class="nn">Char</span><span class="p">.</span><span class="n">code</span><span class="o">(</span><span class="sc">&#39;9&#39;</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">is_alpha</span> <span class="n">c</span> <span class="o">=</span> <span class="k">let</span> <span class="n">code</span> <span class="o">=</span> <span class="nn">Char</span><span class="p">.</span><span class="n">code</span> <span class="n">c</span> <span class="k">in</span>
+</span><span class='line'>                 <span class="o">(</span><span class="n">code</span> <span class="o">&gt;=</span> <span class="nn">Char</span><span class="p">.</span><span class="n">code</span><span class="o">(</span><span class="sc">&#39;A&#39;</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">code</span> <span class="o">&lt;=</span> <span class="nn">Char</span><span class="p">.</span><span class="n">code</span><span class="o">(</span><span class="sc">&#39;Z&#39;</span><span class="o">))</span> <span class="o">||</span>
+</span><span class='line'>                 <span class="o">(</span><span class="n">code</span> <span class="o">&gt;=</span> <span class="nn">Char</span><span class="p">.</span><span class="n">code</span><span class="o">(</span><span class="sc">&#39;a&#39;</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="n">code</span> <span class="o">&lt;=</span> <span class="nn">Char</span><span class="p">.</span><span class="n">code</span><span class="o">(</span><span class="sc">&#39;z&#39;</span><span class="o">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now for our parser we will be parsing source code one token at a time and we&rsquo;ll be recursively calling parsing methods and matching tokens as we go.
+We&rsquo;ll define some additional utility functions which will be used during parsing including an <em>Syntax_error</em> exception which will be thrown if invalid
+token is scanned.</p>
+
+<p><strong>scan</strong> will scan the stream for next token, that&rsquo;s where our token recognition logic is in.</p>
+
+<p><strong>skip_blank_chars</strong> function will skip any number of blank characters including new line characters</p>
+
+<p><strong>next_token</strong> will return last scanned token or will scan stream for next token</p>
+
+<p><strong>match_next</strong> will match last scanned token or will scan stream for next token, match it and return it</p>
+
+<p><strong>match_token</strong> will match the last scanned token against the specified token in parameter or will scan stream for next token and match against it</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="c">(* token *)</span>
+</span><span class='line'><span class="k">type</span> <span class="n">token</span> <span class="o">=</span> <span class="nc">Begin</span> <span class="o">|</span> <span class="nc">End</span>
+</span><span class='line'>           <span class="o">|</span> <span class="nc">Identifier</span> <span class="k">of</span> <span class="kt">string</span>
+</span><span class='line'>           <span class="o">|</span> <span class="nc">Read</span> <span class="o">|</span> <span class="nc">Write</span>
+</span><span class='line'>           <span class="o">|</span> <span class="nc">Literal</span> <span class="k">of</span> <span class="kt">int</span>
+</span><span class='line'>           <span class="o">|</span> <span class="nc">Assign</span>
+</span><span class='line'>           <span class="o">|</span> <span class="nc">LeftParen</span> <span class="o">|</span> <span class="nc">RightParen</span>
+</span><span class='line'>           <span class="o">|</span> <span class="nc">AddOp</span> <span class="o">|</span> <span class="nc">SubOp</span>
+</span><span class='line'>           <span class="o">|</span> <span class="nc">Comma</span> <span class="o">|</span> <span class="nc">Semicolon</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">type</span> <span class="n">scanner</span> <span class="o">=</span> <span class="o">{</span> <span class="k">mutable</span> <span class="n">last_token</span><span class="o">:</span> <span class="n">token</span> <span class="n">option</span><span class="o">;</span> <span class="n">stm</span><span class="o">:</span> <span class="n">stream</span> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">exception</span> <span class="nc">Syntax_error</span> <span class="k">of</span> <span class="kt">string</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="n">msg</span> <span class="o">=</span> <span class="k">raise</span> <span class="o">(</span><span class="nc">Syntax_error</span> <span class="o">(</span><span class="n">msg</span> <span class="o">^</span> <span class="s2">&quot; on line &quot;</span> <span class="o">^</span> <span class="o">(</span><span class="n">string_of_int</span> <span class="n">s</span><span class="o">.</span><span class="n">stm</span><span class="o">.</span><span class="n">line_num</span><span class="o">)))</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="c">(* skip all blank and new line characters *)</span>
+</span><span class='line'><span class="k">let</span> <span class="k">rec</span> <span class="n">skip_blank_chars</span> <span class="n">stm</span> <span class="o">=</span> <span class="k">let</span> <span class="n">c</span> <span class="o">=</span> <span class="n">read_char</span> <span class="n">stm</span> <span class="k">in</span>
+</span><span class='line'>                               <span class="k">if</span> <span class="n">c</span> <span class="o">=</span> <span class="sc">&#39; &#39;</span> <span class="o">||</span> <span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;\t&#39;</span> <span class="o">||</span> <span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;\r&#39;</span> <span class="o">||</span> <span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;\n&#39;</span>
+</span><span class='line'>                               <span class="k">then</span> <span class="n">skip_blank_chars</span> <span class="n">stm</span>
+</span><span class='line'>                               <span class="k">else</span> <span class="n">unread_char</span> <span class="n">stm</span> <span class="n">c</span><span class="o">;</span> <span class="bp">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="c">(* scan a stream and return next token *)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">scan</span> <span class="n">s</span> <span class="o">=</span>   <span class="k">let</span> <span class="n">stm</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">stm</span> <span class="k">in</span> <span class="k">let</span> <span class="n">c</span> <span class="o">=</span> <span class="n">read_char</span> <span class="n">stm</span> <span class="k">in</span>
+</span><span class='line'>               <span class="k">let</span> <span class="k">rec</span> <span class="n">scan_iden</span> <span class="n">acc</span> <span class="o">=</span> <span class="k">let</span> <span class="n">nc</span> <span class="o">=</span> <span class="n">read_char</span> <span class="n">stm</span> <span class="k">in</span>
+</span><span class='line'>                                       <span class="k">if</span> <span class="n">is_alpha</span> <span class="n">nc</span> <span class="o">||</span> <span class="n">is_digit</span> <span class="n">nc</span> <span class="o">||</span> <span class="n">nc</span><span class="o">=</span><span class="sc">&#39;_&#39;</span>
+</span><span class='line'>                                       <span class="k">then</span> <span class="n">scan_iden</span> <span class="o">(</span><span class="n">acc</span> <span class="o">^</span> <span class="o">(</span><span class="nn">Char</span><span class="p">.</span><span class="n">escaped</span> <span class="n">nc</span><span class="o">))</span>
+</span><span class='line'>                                       <span class="k">else</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">unread_char</span> <span class="n">stm</span> <span class="n">nc</span> <span class="k">in</span>
+</span><span class='line'>                                            <span class="k">let</span> <span class="n">lc</span> <span class="o">=</span> <span class="nn">String</span><span class="p">.</span><span class="n">lowercase</span> <span class="n">acc</span> <span class="k">in</span>
+</span><span class='line'>                                            <span class="k">if</span> <span class="n">lc</span> <span class="o">=</span> <span class="s2">&quot;begin&quot;</span> <span class="k">then</span> <span class="nc">Begin</span>
+</span><span class='line'>                                            <span class="k">else</span> <span class="k">if</span> <span class="n">lc</span> <span class="o">=</span> <span class="s2">&quot;end&quot;</span> <span class="k">then</span> <span class="nc">End</span>
+</span><span class='line'>                                            <span class="k">else</span> <span class="k">if</span> <span class="n">lc</span> <span class="o">=</span> <span class="s2">&quot;read&quot;</span> <span class="k">then</span> <span class="nc">Read</span>
+</span><span class='line'>                                            <span class="k">else</span> <span class="k">if</span> <span class="n">lc</span> <span class="o">=</span> <span class="s2">&quot;write&quot;</span> <span class="k">then</span> <span class="nc">Write</span>
+</span><span class='line'>                                            <span class="k">else</span> <span class="nc">Identifier</span> <span class="n">acc</span>
+</span><span class='line'>               <span class="k">in</span>
+</span><span class='line'>               <span class="k">let</span> <span class="k">rec</span> <span class="n">scan_lit</span> <span class="n">acc</span> <span class="o">=</span> <span class="k">let</span> <span class="n">nc</span> <span class="o">=</span> <span class="n">read_char</span> <span class="n">stm</span> <span class="k">in</span>
+</span><span class='line'>                                      <span class="k">if</span> <span class="n">is_digit</span> <span class="n">nc</span>
+</span><span class='line'>                                      <span class="k">then</span> <span class="n">scan_lit</span> <span class="o">(</span><span class="n">acc</span> <span class="o">^</span> <span class="o">(</span><span class="nn">Char</span><span class="p">.</span><span class="n">escaped</span> <span class="n">nc</span><span class="o">))</span>
+</span><span class='line'>                                      <span class="k">else</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">unread_char</span> <span class="n">stm</span> <span class="n">nc</span> <span class="k">in</span>
+</span><span class='line'>                                           <span class="nc">Literal</span> <span class="o">(</span><span class="n">int_of_string</span> <span class="n">acc</span><span class="o">)</span>
+</span><span class='line'>               <span class="k">in</span>
+</span><span class='line'>               <span class="k">if</span> <span class="n">is_alpha</span> <span class="n">c</span> <span class="k">then</span> <span class="n">scan_iden</span> <span class="o">(</span><span class="nn">Char</span><span class="p">.</span><span class="n">escaped</span> <span class="n">c</span><span class="o">)</span>
+</span><span class='line'>               <span class="k">else</span> <span class="k">if</span> <span class="n">is_digit</span> <span class="n">c</span> <span class="k">then</span> <span class="n">scan_lit</span> <span class="o">(</span><span class="nn">Char</span><span class="p">.</span><span class="n">escaped</span> <span class="n">c</span><span class="o">)</span>
+</span><span class='line'>               <span class="k">else</span> <span class="k">if</span> <span class="n">c</span><span class="o">=</span><span class="sc">&#39;+&#39;</span> <span class="k">then</span> <span class="nc">AddOp</span>
+</span><span class='line'>               <span class="k">else</span> <span class="k">if</span> <span class="n">c</span><span class="o">=</span><span class="sc">&#39;-&#39;</span> <span class="k">then</span> <span class="nc">SubOp</span>
+</span><span class='line'>               <span class="k">else</span> <span class="k">if</span> <span class="n">c</span><span class="o">=</span><span class="sc">&#39;,&#39;</span> <span class="k">then</span> <span class="nc">Comma</span>
+</span><span class='line'>               <span class="k">else</span> <span class="k">if</span> <span class="n">c</span><span class="o">=</span><span class="sc">&#39;;&#39;</span> <span class="k">then</span> <span class="nc">Semicolon</span>
+</span><span class='line'>               <span class="k">else</span> <span class="k">if</span> <span class="n">c</span><span class="o">=</span><span class="sc">&#39;(&#39;</span> <span class="k">then</span> <span class="nc">LeftParen</span>
+</span><span class='line'>               <span class="k">else</span> <span class="k">if</span> <span class="n">c</span><span class="o">=</span><span class="sc">&#39;)&#39;</span> <span class="k">then</span> <span class="nc">RightParen</span>
+</span><span class='line'>               <span class="k">else</span> <span class="k">if</span> <span class="n">c</span><span class="o">=</span><span class="sc">&#39;:&#39;</span> <span class="o">&amp;&amp;</span> <span class="n">read_char</span> <span class="n">stm</span> <span class="o">=</span> <span class="sc">&#39;=&#39;</span> <span class="k">then</span> <span class="nc">Assign</span>
+</span><span class='line'>               <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;couldn&#39;t identify the token&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">new_scanner</span> <span class="n">stm</span> <span class="o">=</span> <span class="o">{</span> <span class="n">last_token</span><span class="o">=</span><span class="nc">None</span><span class="o">;</span> <span class="n">stm</span><span class="o">=</span><span class="n">stm</span> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">match_next</span> <span class="n">s</span> <span class="o">=</span> <span class="k">match</span> <span class="n">s</span><span class="o">.</span><span class="n">last_token</span> <span class="k">with</span>
+</span><span class='line'>                      <span class="nc">None</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">skip_blank_chars</span> <span class="n">s</span><span class="o">.</span><span class="n">stm</span> <span class="k">in</span> <span class="n">scan</span> <span class="n">s</span>
+</span><span class='line'>                    <span class="o">|</span> <span class="nc">Some</span> <span class="n">tn</span> <span class="o">-&gt;</span> <span class="n">s</span><span class="o">.</span><span class="n">last_token</span> <span class="o">&lt;-</span> <span class="nc">None</span><span class="o">;</span> <span class="n">tn</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">match_token</span> <span class="n">s</span> <span class="n">t</span> <span class="o">=</span> <span class="n">match_next</span> <span class="n">s</span> <span class="o">=</span> <span class="n">t</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">next_token</span> <span class="n">s</span> <span class="o">=</span> <span class="k">match</span> <span class="n">s</span><span class="o">.</span><span class="n">last_token</span> <span class="k">with</span>
+</span><span class='line'>                        <span class="nc">None</span> <span class="o">-&gt;</span>  <span class="o">(</span><span class="n">skip_blank_chars</span> <span class="n">s</span><span class="o">.</span><span class="n">stm</span><span class="o">;</span>
+</span><span class='line'>                                  <span class="k">let</span> <span class="n">t</span> <span class="o">=</span> <span class="n">scan</span> <span class="n">s</span> <span class="k">in</span>
+</span><span class='line'>                                  <span class="n">s</span><span class="o">.</span><span class="n">last_token</span> <span class="o">&lt;-</span> <span class="nc">Some</span> <span class="n">t</span><span class="o">;</span> <span class="n">t</span><span class="o">)</span>
+</span><span class='line'>                      <span class="o">|</span> <span class="nc">Some</span> <span class="n">t</span> <span class="o">-&gt;</span> <span class="n">t</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In order to generate an asm output we&rsquo;ll define an generator type which will contain the output channel
+and variable locations <em>Hashtbl</em>. Each variable&rsquo;s location will be defined as an integer offset from <em>esp</em>
+and since our micro language is simple we won&rsquo;t have to handle advanced aspects of variable scope and stack
+handling.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="c">(* code generation *)</span>
+</span><span class='line'><span class="k">type</span> <span class="n">generator</span> <span class="o">=</span> <span class="o">{</span> <span class="n">vars</span><span class="o">:</span> <span class="o">(</span><span class="kt">string</span><span class="o">,</span> <span class="kt">int</span><span class="o">)</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">t</span><span class="o">;</span> <span class="n">file</span><span class="o">:</span> <span class="kt">string</span><span class="o">;</span> <span class="n">chan</span><span class="o">:</span> <span class="n">out_channel</span> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">new_generator</span> <span class="n">file</span> <span class="o">=</span> <span class="k">let</span> <span class="n">fs</span> <span class="o">=</span> <span class="o">(</span><span class="nn">Filename</span><span class="p">.</span><span class="n">chop_extension</span> <span class="n">file</span><span class="o">)</span> <span class="o">^</span> <span class="s2">&quot;.s&quot;</span> <span class="k">in</span>
+</span><span class='line'>                         <span class="o">{</span> <span class="n">vars</span><span class="o">=</span><span class="nn">Hashtbl</span><span class="p">.</span><span class="n">create</span> <span class="mi">100</span><span class="o">;</span> <span class="n">file</span><span class="o">=</span><span class="n">fs</span><span class="o">;</span> <span class="n">chan</span><span class="o">=</span><span class="n">open_out</span> <span class="n">fs</span> <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">close_generator</span> <span class="n">g</span> <span class="o">=</span> <span class="n">close_out</span> <span class="n">g</span><span class="o">.</span><span class="n">chan</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">gen</span> <span class="n">g</span> <span class="n">v</span> <span class="o">=</span> <span class="n">output_string</span> <span class="n">g</span><span class="o">.</span><span class="n">chan</span> <span class="n">v</span><span class="o">;</span> <span class="n">output_string</span> <span class="n">g</span><span class="o">.</span><span class="n">chan</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We&rsquo;ll also need to distinguish between ordinary variables and an temporary ones.
+Our temporary variables will be defined automatically and will start from <em>__temp</em> following
+variable location offset. This way we won&rsquo;t be storing temporary variables in <em>Hashtbl</em> and will be
+computing their offset from their name. We&rsquo;ll also define some additional generator helper functions to output asm code.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">bottom_var</span> <span class="o">_</span> <span class="n">g</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">fold</span> <span class="o">(</span><span class="k">fun</span> <span class="o">_</span> <span class="n">v</span> <span class="n">c</span> <span class="o">-&gt;</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;=</span> <span class="n">c</span> <span class="k">then</span> <span class="o">(</span><span class="n">v</span><span class="o">+</span><span class="mi">4</span><span class="o">)</span> <span class="k">else</span> <span class="n">c</span><span class="o">)</span> <span class="n">g</span><span class="o">.</span><span class="n">vars</span> <span class="mi">0</span>
+</span><span class='line'><span class="k">let</span> <span class="n">empty_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span> <span class="o">=</span> <span class="o">(</span><span class="n">bottom_var</span> <span class="n">s</span> <span class="n">g</span><span class="o">)+(</span><span class="mi">4</span><span class="o">*(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="o">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">var_addr</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="o">=</span> <span class="k">if</span> <span class="nn">String</span><span class="p">.</span><span class="n">length</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mi">6</span> <span class="o">&amp;&amp;</span> <span class="nn">String</span><span class="p">.</span><span class="n">sub</span> <span class="n">v</span> <span class="mi">0</span> <span class="mi">6</span> <span class="o">=</span> <span class="s2">&quot;__temp&quot;</span>
+</span><span class='line'>                <span class="k">then</span> <span class="k">let</span> <span class="n">i</span> <span class="o">=</span> <span class="nn">String</span><span class="p">.</span><span class="n">sub</span> <span class="n">v</span> <span class="mi">6</span> <span class="o">((</span><span class="nn">String</span><span class="p">.</span><span class="n">length</span> <span class="n">v</span><span class="o">)</span> <span class="o">-</span> <span class="mi">6</span><span class="o">)</span> <span class="k">in</span> <span class="s2">&quot;[esp+&quot;</span> <span class="o">^</span> <span class="n">i</span> <span class="o">^</span> <span class="s2">&quot;]&quot;</span>
+</span><span class='line'>                <span class="k">else</span>
+</span><span class='line'>                <span class="k">try</span> <span class="s2">&quot;[esp+&quot;</span> <span class="o">^</span> <span class="n">string_of_int</span> <span class="o">(</span><span class="nn">Hashtbl</span><span class="p">.</span><span class="n">find</span> <span class="n">g</span><span class="o">.</span><span class="n">vars</span> <span class="n">v</span><span class="o">)</span> <span class="o">^</span> <span class="s2">&quot;]&quot;</span>
+</span><span class='line'>                <span class="k">with</span> <span class="nc">Not_found</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="o">(</span><span class="s2">&quot;identifier &quot;</span> <span class="o">^</span> <span class="n">v</span> <span class="o">^</span> <span class="s2">&quot; not defined&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="o">=</span> <span class="s2">&quot;dword &quot;</span> <span class="o">^</span> <span class="o">(</span><span class="n">var_addr</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">temp_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span> <span class="o">=</span> <span class="nc">Identifier</span> <span class="o">(</span><span class="s2">&quot;__temp&quot;</span> <span class="o">^</span> <span class="o">(</span><span class="n">string_of_int</span> <span class="o">(</span><span class="n">empty_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span><span class="o">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">is_alloc_var</span> <span class="o">_</span> <span class="n">g</span> <span class="n">v</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">mem</span> <span class="n">g</span><span class="o">.</span><span class="n">vars</span> <span class="n">v</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">alloc_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="o">=</span> <span class="k">if</span> <span class="n">is_alloc_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="k">then</span> <span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span>
+</span><span class='line'>                      <span class="k">else</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">replace</span> <span class="n">g</span><span class="o">.</span><span class="n">vars</span> <span class="n">v</span> <span class="o">(</span><span class="n">empty_var</span> <span class="n">s</span> <span class="n">g</span> <span class="mi">1</span><span class="o">)</span> <span class="k">in</span> <span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">token_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="o">=</span> <span class="k">match</span> <span class="n">v</span> <span class="k">with</span>
+</span><span class='line'>                         <span class="nc">Identifier</span> <span class="n">i</span> <span class="o">-&gt;</span> <span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span>
+</span><span class='line'>                       <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;identifier expected&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">op</span> <span class="n">g</span> <span class="n">opcode</span> <span class="n">a</span> <span class="o">=</span> <span class="n">gen</span> <span class="n">g</span> <span class="o">(</span><span class="s2">&quot;    &quot;</span> <span class="o">^</span> <span class="n">opcode</span> <span class="o">^</span> <span class="s2">&quot;  &quot;</span> <span class="o">^</span> <span class="n">a</span><span class="o">)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">op2</span> <span class="n">g</span> <span class="n">opcode</span> <span class="n">a</span> <span class="n">b</span> <span class="o">=</span> <span class="n">gen</span> <span class="n">g</span> <span class="o">(</span><span class="s2">&quot;    &quot;</span> <span class="o">^</span> <span class="n">opcode</span> <span class="o">^</span> <span class="s2">&quot;  &quot;</span> <span class="o">^</span> <span class="n">a</span> <span class="o">^</span> <span class="s2">&quot;, &quot;</span> <span class="o">^</span> <span class="n">b</span><span class="o">)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">push</span> <span class="n">g</span> <span class="n">a</span> <span class="o">=</span> <span class="n">op</span> <span class="n">g</span> <span class="s2">&quot;push&quot;</span> <span class="n">a</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now in order to compile a source code we need to create a new generator, open an stream on a source file, parse it,
+compile the asm source code using <em>nasm</em> and link the generated <em>.o</em> file into an elf executable.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="c">(* compiling *)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">compile</span> <span class="n">file</span> <span class="o">=</span>
+</span><span class='line'>    <span class="k">try</span>
+</span><span class='line'>        <span class="k">let</span> <span class="n">g</span> <span class="o">=</span> <span class="n">new_generator</span> <span class="n">file</span> <span class="k">in</span>
+</span><span class='line'>        <span class="k">let</span> <span class="n">stm</span> <span class="o">=</span> <span class="n">open_stream</span> <span class="n">file</span> <span class="k">in</span>
+</span><span class='line'>        <span class="k">let</span> <span class="n">out</span> <span class="o">=</span> <span class="nn">Filename</span><span class="p">.</span><span class="n">chop_extension</span> <span class="n">file</span> <span class="k">in</span>
+</span><span class='line'>        <span class="n">parse</span> <span class="n">stm</span> <span class="n">g</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">close_stream</span> <span class="n">stm</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">close_generator</span> <span class="n">g</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="nn">Sys</span><span class="p">.</span><span class="n">command</span> <span class="o">(</span><span class="s2">&quot;nasm -f elf &quot;</span> <span class="o">^</span> <span class="n">g</span><span class="o">.</span><span class="n">file</span><span class="o">)</span> <span class="k">in</span>
+</span><span class='line'>        <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="nn">Sys</span><span class="p">.</span><span class="n">command</span> <span class="o">(</span><span class="s2">&quot;gcc -o &quot;</span> <span class="o">^</span> <span class="n">out</span> <span class="o">^</span> <span class="s2">&quot; &quot;</span> <span class="o">^</span> <span class="n">out</span> <span class="o">^</span> <span class="s2">&quot;.o&quot;</span><span class="o">)</span> <span class="k">in</span> <span class="bp">()</span>
+</span><span class='line'>    <span class="k">with</span> <span class="nc">Syntax_error</span> <span class="n">e</span> <span class="o">-&gt;</span>
+</span><span class='line'>            <span class="nn">Format</span><span class="p">.</span><span class="n">printf</span> <span class="s2">&quot;syntax error: %s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="n">e</span><span class="o">;</span>
+</span><span class='line'>            <span class="nn">Format</span><span class="p">.</span><span class="n">print_flush</span><span class="bp">()</span>
+</span><span class='line'>       <span class="o">|</span> <span class="nc">Sys_error</span> <span class="o">_</span> <span class="o">-&gt;</span>
+</span><span class='line'>            <span class="n">print_string</span> <span class="s2">&quot;no such file found</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">help</span> <span class="bp">()</span> <span class="o">=</span> <span class="n">print_string</span> <span class="s2">&quot;micro &lt;file&gt;</span><span class="se">\n</span><span class="s2">&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="bp">()</span> <span class="o">=</span> <span class="k">if</span> <span class="nn">Array</span><span class="p">.</span><span class="n">length</span> <span class="nn">Sys</span><span class="p">.</span><span class="n">argv</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">then</span> <span class="n">help</span> <span class="bp">()</span>
+</span><span class='line'>         <span class="k">else</span>
+</span><span class='line'>             <span class="k">let</span> <span class="n">file</span> <span class="o">=</span> <span class="nn">Array</span><span class="p">.</span><span class="n">get</span> <span class="nn">Sys</span><span class="p">.</span><span class="n">argv</span> <span class="mi">1</span>
+</span><span class='line'>             <span class="k">in</span>
+</span><span class='line'>             <span class="nn">Format</span><span class="p">.</span><span class="n">printf</span> <span class="s2">&quot;compiling %s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="n">file</span><span class="o">;</span>
+</span><span class='line'>             <span class="nn">Format</span><span class="p">.</span><span class="n">print_flush</span> <span class="bp">()</span><span class="o">;</span>
+</span><span class='line'>             <span class="n">compile</span> <span class="n">file</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Our parsing method will be combined with semantics checking and will output <em>asm</em> code using generator functions which we will define later.
+Program begins from <em>begin</em> keyword, ends with <em>end</em> keyword and has 0 or more statements in between.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">parse</span> <span class="n">stm</span> <span class="n">g</span> <span class="o">=</span>
+</span><span class='line'>        <span class="k">let</span> <span class="n">s</span> <span class="o">=</span> <span class="o">(</span><span class="n">new_scanner</span> <span class="n">stm</span><span class="o">)</span> <span class="k">in</span>
+</span><span class='line'>        <span class="k">try</span>
+</span><span class='line'>            <span class="n">program</span> <span class="n">s</span> <span class="n">g</span>
+</span><span class='line'>        <span class="k">with</span> <span class="nc">End_of_file</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;program reached end of file before end keyword&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">program</span> <span class="n">s</span> <span class="n">g</span> <span class="o">=</span> <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">Begin</span> <span class="k">then</span>
+</span><span class='line'>                    <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_begin</span> <span class="n">s</span> <span class="n">g</span> <span class="k">in</span>
+</span><span class='line'>                    <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">statements</span> <span class="n">s</span> <span class="n">g</span> <span class="k">in</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">End</span> <span class="k">then</span>
+</span><span class='line'>                    <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_end</span> <span class="n">s</span> <span class="n">g</span> <span class="k">in</span> <span class="bp">()</span>
+</span><span class='line'>                    <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;program should end with end keyword&quot;</span>
+</span><span class='line'>                <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;program should start with begin keyword&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="k">rec</span> <span class="n">statements</span> <span class="n">s</span> <span class="n">g</span> <span class="o">=</span> <span class="k">if</span> <span class="n">statement</span> <span class="n">s</span> <span class="n">g</span> <span class="k">then</span> <span class="n">statements</span> <span class="n">s</span> <span class="n">g</span> <span class="k">else</span> <span class="bp">()</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Each statement is either an <em>read</em>, <em>write</em> or an assignment to a variable.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="k">rec</span> <span class="n">statements</span> <span class="n">s</span> <span class="n">g</span> <span class="o">=</span> <span class="k">if</span> <span class="n">statement</span> <span class="n">s</span> <span class="n">g</span> <span class="k">then</span> <span class="n">statements</span> <span class="n">s</span> <span class="n">g</span> <span class="k">else</span> <span class="bp">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">statement</span> <span class="n">s</span> <span class="n">g</span> <span class="o">=</span> <span class="k">let</span> <span class="n">t</span> <span class="o">=</span> <span class="n">next_token</span> <span class="n">s</span> <span class="k">in</span>
+</span><span class='line'>                  <span class="k">if</span> <span class="k">match</span> <span class="n">t</span> <span class="k">with</span>
+</span><span class='line'>                      <span class="nc">Read</span> <span class="o">-&gt;</span> <span class="n">read</span> <span class="n">s</span> <span class="n">g</span>
+</span><span class='line'>                    <span class="o">|</span> <span class="nc">Write</span> <span class="o">-&gt;</span> <span class="n">write</span> <span class="n">s</span> <span class="n">g</span>
+</span><span class='line'>                    <span class="o">|</span> <span class="nc">Identifier</span> <span class="n">i</span> <span class="o">-&gt;</span> <span class="n">assignment</span> <span class="n">s</span> <span class="n">g</span>
+</span><span class='line'>                    <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="bp">false</span>
+</span><span class='line'>                  <span class="k">then</span>
+</span><span class='line'>                      <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">Semicolon</span> <span class="k">then</span> <span class="bp">true</span>
+</span><span class='line'>                      <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;statement must end with semicolon&quot;</span>
+</span><span class='line'>                  <span class="k">else</span> <span class="bp">false</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Each assignment statement has an identifier token on it&rsquo;s left side followed by an assignment token and expression
+on the right hand side.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">assignment</span> <span class="n">s</span> <span class="n">g</span> <span class="o">=</span> <span class="k">let</span> <span class="n">id</span> <span class="o">=</span> <span class="n">match_next</span> <span class="n">s</span> <span class="k">in</span>
+</span><span class='line'>                     <span class="k">match</span> <span class="n">id</span> <span class="k">with</span>
+</span><span class='line'>                        <span class="nc">Identifier</span> <span class="n">i</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">Assign</span> <span class="k">then</span>
+</span><span class='line'>                                               <span class="k">let</span> <span class="n">new_var</span> <span class="o">=</span> <span class="k">if</span> <span class="n">is_alloc_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span> <span class="k">then</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">1</span> <span class="k">in</span>
+</span><span class='line'>                                               <span class="k">let</span> <span class="n">id2</span> <span class="o">=</span> <span class="n">expression</span> <span class="n">s</span> <span class="n">g</span> <span class="o">(</span><span class="mi">1</span><span class="o">+</span><span class="n">new_var</span><span class="o">)</span> <span class="k">in</span>
+</span><span class='line'>                                               <span class="k">match</span> <span class="n">id2</span> <span class="k">with</span>
+</span><span class='line'>                                                   <span class="nc">Literal</span> <span class="n">l2</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_assign</span> <span class="n">s</span> <span class="n">g</span> <span class="n">id</span> <span class="n">id2</span> <span class="k">in</span> <span class="bp">true</span>
+</span><span class='line'>                                                 <span class="o">|</span> <span class="nc">Identifier</span> <span class="n">i2</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_assign</span> <span class="n">s</span> <span class="n">g</span> <span class="n">id</span> <span class="n">id2</span> <span class="k">in</span> <span class="bp">true</span>
+</span><span class='line'>                                                 <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;literal or identifier expected&quot;</span>
+</span><span class='line'>                                         <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;assign symbol expected&quot;</span><span class="o">)</span>
+</span><span class='line'>                      <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;identifier expected&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Each expression statement is primary optionally followed by an operation token and another primary.
+Primary might also be an expression in curly brackets.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="k">rec</span> <span class="n">expression</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="o">=</span>
+</span><span class='line'>        <span class="k">let</span> <span class="n">primary</span> <span class="n">s</span> <span class="o">=</span> <span class="k">match</span> <span class="o">(</span><span class="n">next_token</span> <span class="n">s</span><span class="o">)</span> <span class="k">with</span>
+</span><span class='line'>                            <span class="nc">LeftParen</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">LeftParen</span> <span class="k">in</span>
+</span><span class='line'>                                          <span class="k">let</span> <span class="n">e</span> <span class="o">=</span> <span class="n">expression</span> <span class="n">s</span> <span class="n">g</span> <span class="o">(</span><span class="n">d</span><span class="o">+</span><span class="mi">1</span><span class="o">)</span> <span class="k">in</span>
+</span><span class='line'>                                          <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">RightParen</span> <span class="k">then</span> <span class="nc">Some</span> <span class="n">e</span>
+</span><span class='line'>                                          <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;right paren expected in expression&quot;</span><span class="o">)</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="nc">Identifier</span> <span class="n">i</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">match_token</span> <span class="n">s</span> <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i</span><span class="o">)</span> <span class="k">in</span> <span class="nc">Some</span> <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i</span><span class="o">)</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="nc">Literal</span> <span class="n">l</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">match_token</span> <span class="n">s</span> <span class="o">(</span><span class="nc">Literal</span> <span class="n">l</span><span class="o">)</span> <span class="k">in</span> <span class="nc">Some</span> <span class="o">(</span><span class="nc">Literal</span> <span class="n">l</span><span class="o">)</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="nc">None</span>
+</span><span class='line'>        <span class="k">in</span>
+</span><span class='line'>        <span class="k">let</span> <span class="n">lp</span> <span class="o">=</span> <span class="n">primary</span> <span class="n">s</span> <span class="k">in</span>
+</span><span class='line'>        <span class="k">match</span> <span class="n">lp</span> <span class="k">with</span>
+</span><span class='line'>            <span class="nc">Some</span> <span class="n">l</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="k">match</span> <span class="o">(</span><span class="n">next_token</span> <span class="n">s</span><span class="o">)</span> <span class="k">with</span>
+</span><span class='line'>                             <span class="nc">AddOp</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">AddOp</span> <span class="k">in</span>
+</span><span class='line'>                                      <span class="n">addop</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">l</span> <span class="o">(</span><span class="n">expression</span> <span class="n">s</span> <span class="n">g</span> <span class="o">(</span><span class="n">d</span><span class="o">+</span><span class="mi">1</span><span class="o">))</span>
+</span><span class='line'>                           <span class="o">|</span> <span class="nc">SubOp</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">SubOp</span> <span class="k">in</span>
+</span><span class='line'>                                      <span class="n">subop</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">l</span> <span class="o">(</span><span class="n">expression</span> <span class="n">s</span> <span class="n">g</span> <span class="o">(</span><span class="n">d</span><span class="o">+</span><span class="mi">1</span><span class="o">))</span>
+</span><span class='line'>                           <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">l</span><span class="o">)</span>
+</span><span class='line'>          <span class="o">|</span> <span class="nc">None</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;literal or identifier expected&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Our micro language supports only two operations on integers, addition and subtraction, but
+it can be easily extended to support more.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">addop</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">l</span> <span class="n">r</span> <span class="o">=</span> <span class="k">match</span> <span class="o">(</span><span class="n">l</span><span class="o">,</span> <span class="n">r</span><span class="o">)</span> <span class="k">with</span>
+</span><span class='line'>                            <span class="o">(</span><span class="nc">Literal</span> <span class="n">l1</span><span class="o">,</span> <span class="nc">Literal</span> <span class="n">l2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="nc">Literal</span> <span class="o">(</span><span class="n">l1</span><span class="o">+</span><span class="n">l2</span><span class="o">)</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i1</span><span class="o">,</span> <span class="nc">Literal</span> <span class="n">l2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="n">generate_add</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">l</span> <span class="n">r</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">(</span><span class="nc">Literal</span> <span class="n">l1</span><span class="o">,</span> <span class="nc">Identifier</span> <span class="n">i2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="n">generate_add</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">r</span> <span class="n">l</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;expected literal or identifier for add operation&quot;</span>
+</span><span class='line'><span class="k">let</span> <span class="n">subop</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">l</span> <span class="n">r</span> <span class="o">=</span> <span class="k">match</span> <span class="o">(</span><span class="n">l</span><span class="o">,</span> <span class="n">r</span><span class="o">)</span> <span class="k">with</span>
+</span><span class='line'>                            <span class="o">(</span><span class="nc">Literal</span> <span class="n">l1</span><span class="o">,</span> <span class="nc">Literal</span> <span class="n">l2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="nc">Literal</span> <span class="o">(</span><span class="n">l1</span><span class="o">-</span><span class="n">l2</span><span class="o">)</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i1</span><span class="o">,</span> <span class="nc">Literal</span> <span class="n">l2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="n">generate_sub</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">l</span> <span class="n">r</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">(</span><span class="nc">Literal</span> <span class="n">l1</span><span class="o">,</span> <span class="nc">Identifier</span> <span class="n">i2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="n">generate_sub</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">l</span> <span class="n">r</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;expected literal or identifier for sub operation&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>write</em> statement is just comma separated list of expressions.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">write</span> <span class="n">s</span> <span class="n">g</span> <span class="o">=</span> <span class="k">let</span> <span class="k">rec</span> <span class="n">expressions</span> <span class="n">c</span> <span class="o">=</span>
+</span><span class='line'>                    <span class="k">let</span> <span class="n">e</span> <span class="o">=</span> <span class="o">(</span><span class="n">expression</span> <span class="n">s</span> <span class="n">g</span> <span class="mi">1</span><span class="o">)</span> <span class="k">in</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="k">match</span> <span class="n">e</span> <span class="k">with</span>
+</span><span class='line'>                        <span class="nc">Identifier</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_write</span> <span class="n">s</span> <span class="n">g</span> <span class="n">e</span> <span class="k">in</span> <span class="bp">true</span>
+</span><span class='line'>                      <span class="o">|</span> <span class="nc">Literal</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_write</span> <span class="n">s</span> <span class="n">g</span> <span class="n">e</span> <span class="k">in</span> <span class="bp">true</span>
+</span><span class='line'>                      <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="bp">false</span>
+</span><span class='line'>                    <span class="k">then</span> <span class="k">if</span> <span class="o">(</span><span class="n">next_token</span> <span class="n">s</span><span class="o">)</span> <span class="o">=</span> <span class="nc">Comma</span> <span class="k">then</span>
+</span><span class='line'>                            <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">Comma</span> <span class="k">in</span> <span class="n">expressions</span> <span class="o">(</span><span class="n">c</span><span class="o">+</span><span class="mi">1</span><span class="o">)</span>
+</span><span class='line'>                         <span class="k">else</span> <span class="o">(</span><span class="n">c</span><span class="o">+</span><span class="mi">1</span><span class="o">)</span>
+</span><span class='line'>                    <span class="k">else</span> <span class="n">c</span>
+</span><span class='line'>                <span class="k">in</span>
+</span><span class='line'>                <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">Write</span> <span class="k">then</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">LeftParen</span> <span class="k">then</span>
+</span><span class='line'>                        <span class="k">if</span> <span class="n">expressions</span> <span class="mi">0</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">then</span>
+</span><span class='line'>                            <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">RightParen</span> <span class="k">then</span> <span class="bp">true</span>
+</span><span class='line'>                            <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;right paren expected in write statement&quot;</span>
+</span><span class='line'>                        <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;write statement expected atleast one expression&quot;</span>
+</span><span class='line'>                    <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;left paren expected in write statement&quot;</span>
+</span><span class='line'>                <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;write statement expected&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>read</em> statement is a comma separated list of identifiers</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">read</span> <span class="n">s</span> <span class="n">g</span> <span class="o">=</span> <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">Read</span> <span class="k">then</span>
+</span><span class='line'>                <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">LeftParen</span> <span class="k">then</span>
+</span><span class='line'>                    <span class="k">let</span> <span class="n">ids</span> <span class="o">=</span> <span class="n">identifiers</span> <span class="n">s</span> <span class="k">in</span>
+</span><span class='line'>                    <span class="k">if</span> <span class="n">ids</span> <span class="o">=</span> <span class="bp">[]</span> <span class="k">then</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;read statement expects comma seperated identifier(s)&quot;</span>
+</span><span class='line'>                    <span class="k">else</span> <span class="k">if</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">RightParen</span> <span class="k">then</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_reads</span> <span class="n">s</span> <span class="n">g</span> <span class="o">(</span><span class="nn">List</span><span class="p">.</span><span class="n">rev</span> <span class="n">ids</span><span class="o">)</span> <span class="k">in</span> <span class="bp">true</span>
+</span><span class='line'>                         <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;right paren expected in read statement&quot;</span>
+</span><span class='line'>                <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;left paren expected in read statement&quot;</span>
+</span><span class='line'>             <span class="k">else</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;read statement expected&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">identifiers</span> <span class="n">s</span> <span class="o">=</span> <span class="k">let</span> <span class="k">rec</span> <span class="n">idens</span> <span class="n">ids</span> <span class="o">=</span>
+</span><span class='line'>                        <span class="k">match</span> <span class="o">(</span><span class="n">next_token</span> <span class="n">s</span><span class="o">)</span> <span class="k">with</span>
+</span><span class='line'>                            <span class="nc">Identifier</span> <span class="n">i</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">match_next</span> <span class="n">s</span> <span class="k">in</span>
+</span><span class='line'>                                            <span class="k">let</span> <span class="n">n</span> <span class="o">=</span> <span class="n">next_token</span> <span class="n">s</span> <span class="k">in</span>
+</span><span class='line'>                                            <span class="k">if</span> <span class="n">n</span> <span class="o">=</span> <span class="nc">Comma</span> <span class="k">then</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">match_token</span> <span class="n">s</span> <span class="nc">Comma</span> <span class="k">in</span> <span class="n">idens</span> <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i</span> <span class="o">::</span> <span class="n">ids</span><span class="o">)</span>
+</span><span class='line'>                                            <span class="k">else</span> <span class="n">idens</span> <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i</span> <span class="o">::</span> <span class="n">ids</span><span class="o">)</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">ids</span>
+</span><span class='line'>                    <span class="k">in</span> <span class="n">idens</span> <span class="bp">[]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now it&rsquo;s finally time to generate some <em>asm</em> code, let&rsquo;s start from <em>begin</em> and <em>end</em> of our program.
+Our program will preallocate 1000 bytes on stack for variables, since all of our variables are static.
+We&rsquo;ll also need to define external libc functions <strong>scanf</strong> and <strong>printf</strong>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">generate_begin</span> <span class="o">_</span> <span class="n">g</span> <span class="o">=</span> <span class="n">gen</span> <span class="n">g</span>
+</span><span class='line'><span class="s2">&quot;extern printf</span>
+</span><span class='line'><span class="s2">extern scanf</span>
+</span><span class='line'>
+</span><span class='line'><span class="s2">section .data</span>
+</span><span class='line'><span class="s2">    inf: db &#39;%d&#39;, 0</span>
+</span><span class='line'><span class="s2">    ouf: db &#39;%d&#39;, 10, 0</span>
+</span><span class='line'>
+</span><span class='line'><span class="s2">section .text</span>
+</span><span class='line'><span class="s2">    global main</span>
+</span><span class='line'>
+</span><span class='line'><span class="s2">main:</span>
+</span><span class='line'><span class="s2">    sub   esp, 1000&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">generate_end</span> <span class="o">_</span> <span class="n">g</span> <span class="o">=</span> <span class="n">gen</span> <span class="n">g</span>
+</span><span class='line'><span class="s2">&quot;    add   esp, 1000</span>
+</span><span class='line'><span class="s2">exit:</span>
+</span><span class='line'><span class="s2">    mov  eax, 1 ; sys_exit</span>
+</span><span class='line'><span class="s2">    mov  ebx, 0</span>
+</span><span class='line'><span class="s2">    int  80h&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>read</em> and <em>write</em> statements will use libc <strong>scanf</strong> and <strong>printf</strong> functions to read integer variables
+from <em>stdin</em> and output them on <em>stdout</em>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">generate_read</span> <span class="n">s</span> <span class="n">g</span> <span class="n">id</span> <span class="o">=</span> <span class="k">match</span> <span class="n">id</span> <span class="k">with</span>
+</span><span class='line'>                            <span class="nc">Identifier</span> <span class="n">i</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;lea&quot;</span> <span class="s2">&quot;eax&quot;</span> <span class="o">(</span><span class="n">var_addr</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span><span class="o">);</span>
+</span><span class='line'>                                             <span class="n">push</span> <span class="n">g</span> <span class="s2">&quot;eax&quot;</span><span class="o">;</span>
+</span><span class='line'>                                             <span class="n">push</span> <span class="n">g</span> <span class="s2">&quot;inf&quot;</span><span class="o">;</span>
+</span><span class='line'>                                             <span class="n">op</span> <span class="n">g</span> <span class="s2">&quot;call&quot;</span> <span class="s2">&quot;scanf&quot;</span><span class="o">;</span>
+</span><span class='line'>                                             <span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;add &quot;</span> <span class="s2">&quot;esp&quot;</span> <span class="s2">&quot;8&quot;</span><span class="o">)</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;generate read called with invalid argument&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="k">rec</span> <span class="n">generate_reads</span> <span class="n">s</span> <span class="n">g</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">iter</span> <span class="o">(</span><span class="n">generate_read</span> <span class="n">s</span> <span class="n">g</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">generate_write</span> <span class="n">s</span> <span class="n">g</span> <span class="n">id</span> <span class="o">=</span> <span class="k">match</span> <span class="n">id</span> <span class="k">with</span>
+</span><span class='line'>                            <span class="nc">Identifier</span> <span class="n">i</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="n">push</span> <span class="n">g</span> <span class="o">(</span><span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span><span class="o">);</span>
+</span><span class='line'>                                             <span class="n">push</span> <span class="n">g</span> <span class="s2">&quot;ouf&quot;</span><span class="o">;</span>
+</span><span class='line'>                                             <span class="n">op</span> <span class="n">g</span> <span class="s2">&quot;call&quot;</span> <span class="s2">&quot;printf&quot;</span><span class="o">;</span>
+</span><span class='line'>                                             <span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;add &quot;</span> <span class="s2">&quot;esp&quot;</span> <span class="s2">&quot;8&quot;</span><span class="o">)</span>
+</span><span class='line'>                          <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;generate write called with invalid argument&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Assignment statement is just an allocation of a variable followed by a copying variable from one location
+into another. Our copy function understands literal variables and translates their values directly into <em>asm</em> code.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">generate_assign</span> <span class="n">s</span> <span class="n">g</span> <span class="n">a</span> <span class="n">b</span> <span class="o">=</span> <span class="k">match</span> <span class="n">a</span> <span class="k">with</span>
+</span><span class='line'>                                <span class="nc">Identifier</span> <span class="n">i</span> <span class="o">-&gt;</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">alloc_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span> <span class="k">in</span> <span class="n">generate_copy</span> <span class="n">s</span> <span class="n">g</span> <span class="n">a</span> <span class="n">b</span>
+</span><span class='line'>                              <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;generate assign called with invalid argument&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">generate_copy</span> <span class="n">s</span> <span class="n">g</span> <span class="n">a</span> <span class="n">b</span> <span class="o">=</span> <span class="k">match</span> <span class="n">a</span> <span class="k">with</span>
+</span><span class='line'>                                <span class="nc">Identifier</span> <span class="n">i</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="k">match</span> <span class="n">b</span> <span class="k">with</span>
+</span><span class='line'>                                                        <span class="nc">Identifier</span> <span class="n">i2</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;mov &quot;</span> <span class="s2">&quot;eax&quot;</span> <span class="o">(</span><span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i2</span><span class="o">);</span>
+</span><span class='line'>                                                                          <span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;mov &quot;</span> <span class="o">(</span><span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span><span class="o">)</span> <span class="s2">&quot;eax&quot;</span><span class="o">)</span>
+</span><span class='line'>                                                      <span class="o">|</span> <span class="nc">Literal</span> <span class="n">l</span> <span class="o">-&gt;</span> <span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;mov &quot;</span> <span class="o">(</span><span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i</span><span class="o">)</span> <span class="o">(</span><span class="n">string_of_int</span> <span class="n">l</span><span class="o">)</span>
+</span><span class='line'>                                                      <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;generate copy called with invalid argument&quot;</span><span class="o">)</span>
+</span><span class='line'>                              <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;generate copy called with invalid argument&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Addition and subtraction operations use temporary variables to add and subtract
+values from two variables and return result</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">generate_add</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">id1</span> <span class="n">id2</span> <span class="o">=</span> <span class="k">match</span> <span class="o">(</span><span class="n">id1</span><span class="o">,</span> <span class="n">id2</span><span class="o">)</span> <span class="k">with</span>
+</span><span class='line'>                                     <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i1</span><span class="o">,</span> <span class="nc">Identifier</span> <span class="n">i2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="k">let</span> <span class="n">v</span> <span class="o">=</span> <span class="n">temp_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="k">in</span>
+</span><span class='line'>                                                                        <span class="k">let</span> <span class="n">vi</span> <span class="o">=</span> <span class="n">token_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="k">in</span>
+</span><span class='line'>                                                                        <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_copy</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="n">id1</span> <span class="k">in</span>
+</span><span class='line'>                                                                        <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;add &quot;</span> <span class="n">vi</span> <span class="o">(</span><span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i2</span><span class="o">)</span> <span class="k">in</span> <span class="n">v</span><span class="o">)</span>
+</span><span class='line'>                                   <span class="o">|</span> <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i1</span><span class="o">,</span> <span class="nc">Literal</span> <span class="n">l2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="k">let</span> <span class="n">v</span> <span class="o">=</span> <span class="n">temp_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="k">in</span>
+</span><span class='line'>                                                                     <span class="k">let</span> <span class="n">vi</span> <span class="o">=</span> <span class="n">token_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="k">in</span>
+</span><span class='line'>                                                                     <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_copy</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="n">id1</span> <span class="k">in</span>
+</span><span class='line'>                                                                     <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;add &quot;</span> <span class="n">vi</span> <span class="o">(</span><span class="n">string_of_int</span> <span class="n">l2</span><span class="o">)</span> <span class="k">in</span> <span class="n">v</span><span class="o">)</span>
+</span><span class='line'>                                   <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;generate exp called with invalid argument&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">let</span> <span class="n">generate_sub</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="n">id1</span> <span class="n">id2</span> <span class="o">=</span> <span class="k">match</span> <span class="o">(</span><span class="n">id1</span><span class="o">,</span> <span class="n">id2</span><span class="o">)</span> <span class="k">with</span>
+</span><span class='line'>                                     <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i1</span><span class="o">,</span> <span class="nc">Identifier</span> <span class="n">i2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="k">let</span> <span class="n">v</span> <span class="o">=</span> <span class="n">temp_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="k">in</span>
+</span><span class='line'>                                                                        <span class="k">let</span> <span class="n">vi</span> <span class="o">=</span> <span class="n">token_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="k">in</span>
+</span><span class='line'>                                                                        <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_copy</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="n">id1</span> <span class="k">in</span>
+</span><span class='line'>                                                                        <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;sub &quot;</span> <span class="n">vi</span> <span class="o">(</span><span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i2</span><span class="o">)</span> <span class="k">in</span> <span class="n">v</span><span class="o">)</span>
+</span><span class='line'>                                   <span class="o">|</span> <span class="o">(</span><span class="nc">Identifier</span> <span class="n">i1</span><span class="o">,</span> <span class="nc">Literal</span> <span class="n">l2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="k">let</span> <span class="n">v</span> <span class="o">=</span> <span class="n">temp_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="k">in</span>
+</span><span class='line'>                                                                     <span class="k">let</span> <span class="n">vi</span> <span class="o">=</span> <span class="n">token_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="k">in</span>
+</span><span class='line'>                                                                     <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_copy</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="n">id1</span> <span class="k">in</span>
+</span><span class='line'>                                                                     <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;sub &quot;</span> <span class="n">vi</span> <span class="o">(</span><span class="n">string_of_int</span> <span class="n">l2</span><span class="o">)</span> <span class="k">in</span> <span class="n">v</span><span class="o">)</span>
+</span><span class='line'>                                   <span class="o">|</span> <span class="o">(</span><span class="nc">Literal</span> <span class="n">l1</span><span class="o">,</span> <span class="nc">Identifier</span> <span class="n">i2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="o">(</span><span class="k">let</span> <span class="n">v</span> <span class="o">=</span> <span class="n">temp_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">d</span> <span class="k">in</span>
+</span><span class='line'>                                                                     <span class="k">let</span> <span class="n">vi</span> <span class="o">=</span> <span class="n">token_var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="k">in</span>
+</span><span class='line'>                                                                     <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">generate_copy</span> <span class="n">s</span> <span class="n">g</span> <span class="n">v</span> <span class="n">id1</span> <span class="k">in</span>
+</span><span class='line'>                                                                     <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="n">op2</span> <span class="n">g</span> <span class="s2">&quot;sub &quot;</span> <span class="n">vi</span> <span class="o">(</span><span class="n">var</span> <span class="n">s</span> <span class="n">g</span> <span class="n">i2</span><span class="o">)</span> <span class="k">in</span> <span class="n">v</span><span class="o">)</span>
+</span><span class='line'>                                   <span class="o">|</span> <span class="o">_</span> <span class="o">-&gt;</span> <span class="n">syntax_error</span> <span class="n">s</span> <span class="s2">&quot;generate exp called with invalid argument&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And that&rsquo;s all of it! We now have a trivial micro compiler that generates binary executable file.
+Source code can be found in my github <a href="https://github.com/troydm/micro/">micro</a> repo. Writing an compiler
+is quite complex and entertaining task but it&rsquo;s definitely worth the time spend on!</p>
+
+<p><img src="http://i.imgur.com/ArEvld4.png" alt="Kawaii Loli" /></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Dmitry Geurkov</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-03-29T19:12:25+04:00" pubdate data-updated="true">Mar 29<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/asm/'>asm</a>, <a class='category' href='/blog/categories/compiler/'>compiler</a>, <a class='category' href='/blog/categories/ocaml/'>ocaml</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/" data-via="" data-counturl="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/01/26/making-30-years-old-pascal-code-run-again/" title="Previous Post: Making 30 years old Pascal code run again">&laquo; Making 30 years old Pascal code run again</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>About Me</h1>
+  <a href="/about"><img src="/images/me.jpg"></a>
+  <p>
+  I'm software developer, functional programming enthusiast 
+  and open source evangelist from <a href="https://en.wikipedia.org/wiki/Tbilisi">Tbilisi, Georgia</a>
+  </p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/01/26/making-30-years-old-pascal-code-run-again/">Making 30 years old Pascal code run again</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme/">Processing &amp; Broadcasting Financial Data in Scheme</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writing IRC Bot using Perl 5 and POCO::IRC</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/">Hosting your own remote private torrent tracker</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+        <a class="twitter-timeline"  href="https://twitter.com/dgeurkov"  data-widget-id="442633732726349824">Tweets by @dgeurkov</a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/troydm">@troydm</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'troydm',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'dgeurkov';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/';
+        var disqus_url = 'http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
