@@ -38,7 +38,7 @@ As you can see from example source code the program starts with **begin** keywor
 **write** takes a list of expressions and outputs them into *stdout*
 
 Now in order to create an executable from this source code first we need to parse it. Since LL(1) type parser is enough to parse this kind of language, we'll need only one character lookahead. 
- Unfortunately OCaml doesn't has an unread operation unlike libc's **ungetc** so we'll need to define a simple stream reader which will have a *mutable char* and we will also count lines of source code read. 
+ Unfortunately OCaml doesn't have an unread operation like libc's **ungetc** so we'll need to define a simple stream reader which will have a *mutable char* and we will also count lines of source code read. 
 We'll also define two utility functions which we will use later which will check if a character is alphanumeric and if it's a digit.
 {% codeblock lang:ocaml %}
 (* stream *)
