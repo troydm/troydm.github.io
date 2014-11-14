@@ -4,7 +4,7 @@
   <title><![CDATA[Category: asm | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/asm/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2014-03-31T16:35:24+04:00</updated>
+  <updated>2014-11-15T01:36:00+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -12,6 +12,710 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc]]></title>
+    <link href="http://troydm.github.io/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/"/>
+    <updated>2014-11-14T22:58:29+04:00</updated>
+    <id>http://troydm.github.io/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc</id>
+    <content type="html"><![CDATA[<p>In <a href="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/">my previous post</a> I&rsquo;ve talked about writing micro compiler in OCaml under 300 lines of source code. There are number of ways to make our work easier and number of source code lines significantly smaller.</p>
+
+<p><img src="http://i.imgur.com/2q3i5KA.gif" alt="Potato Loli" /></p>
+
+<p>Let&rsquo;s rewrite our micro compiler using tools called <em>lexer</em> and <em>parser</em> generators. We&rsquo;ll be using tools called <strong>ocamllex</strong> and <strong>ocamlyacc</strong> which are distributed with <em>OCaml</em> compiler and are modeled after
+famous <strong>lex</strong> and <strong>yacc</strong> tools for <em>Unix</em> operating systems. Those tools actually have better modern analogues called <strong>flex</strong> and <strong>bison</strong> which are described in detail in <a href="http://www.amazon.com/flex-bison-Text-Processing-Tools/dp/0596155972/">Flex &amp; Bison: Text Processing Tools</a> book.
+Nowadays however if you are writing a professional compiler in <em>OCaml</em> I strongly suggest you consider using <a href="https://github.com/alainfrisch/sedlex">sedlex</a> and <a href="http://gallium.inria.fr/~fpottier/menhir/">menhir</a> instead of <strong>ocamllex</strong> and <strong>ocamlyacc</strong> as both tools are quite outdated and
+lack some significant features that their modern analogues have such as unicode support for lexing, parameterized parser generation and built-in grammar interpreter. So what are lexer and parser generators?
+To put it simply <strong>ocamllex</strong> and <strong>ocamlyacc</strong> take special <em>.mll</em> and <em>.mly</em> definition files of lexer and parser semantics mixed with <em>OCaml</em> source code and generate an <em>.ml</em> source code files that do the actual token generation and parsing for you.
+Pretty neat indeed, and it&rsquo;s actually easier to use than it sounds so let&rsquo;s rewrite our micro compiler using those tools. We&rsquo;ll be using original source code of micro compiler as reference only as entire code base needs to be changed. You can see the end result of our rewrite in <a href="https://github.com/troydm/micro/tree/simple">micro</a> git repository branch called <em>simple</em>. For the actual description of the micro language see my previous post. So let&rsquo;s get started!</p>
+
+<!--more-->
+
+
+<p>First let&rsquo;s create our files for lexer and parser called <em>lexer.mll</em> and <em>parser.mly</em>. Now let&rsquo;s define our tokens in <em>parser.mly</em>. As you can see it&rsquo;s defined
+using special syntax that is described in <a href="http://caml.inria.fr/pub/docs/manual-ocaml/lexyacc.html">ocamlyacc manual</a>.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="o">%</span><span class="n">token</span> <span class="nc">BEGIN</span> <span class="nc">END</span> <span class="nc">EOF</span>
+</span><span class='line'><span class="o">%</span><span class="n">token</span> <span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span> <span class="nc">IDENTIFIER</span>
+</span><span class='line'><span class="o">%</span><span class="n">token</span> <span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="nc">LITERAL</span>
+</span><span class='line'><span class="o">%</span><span class="n">token</span> <span class="nc">READ</span> <span class="nc">WRITE</span>
+</span><span class='line'><span class="o">%</span><span class="n">token</span> <span class="nc">ASSIGN</span>
+</span><span class='line'><span class="o">%</span><span class="n">token</span> <span class="nc">LEFTPAREN</span> <span class="nc">RIGHTPAREN</span><span class="o">&lt;</span><span class="n">br</span><span class="o">/&gt;</span>
+</span><span class='line'><span class="o">%</span><span class="n">token</span> <span class="nc">ADDOP</span> <span class="nc">SUBOP</span>
+</span><span class='line'><span class="o">%</span><span class="n">token</span> <span class="nc">COMMA</span> <span class="nc">SEMICOLON</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Now let&rsquo;s define lexical semantics for those tokens in <em>lexer.mll</em> file. The tokens we defined in parser.mly will be generated into <em>parser.mli</em> interface
+file so first of all let&rsquo;s include those from parser module by adding a header to <em>lexer.mll</em> file. The part between <em>{</em> and <em>}</em> is defined in <em>OCaml</em> syntax
+and will be translated into the generated lexer.ml file without any changes. For the description of <em>ocamllex</em> definition file consult it&rsquo;s <a href="http://caml.inria.fr/pub/docs/manual-ocaml/lexyacc.html">manual</a></p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="o">{&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">open</span> <span class="nc">Parser</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Next let&rsquo;s define some lexical semantics next for blank characters, digits and alpha numerical characters. As you can see those are defined using
+regular expression syntax and can be referencing each other. This way we can define identifier lexical semantics by just referencing alpha and digit definitions.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">blank</span> <span class="o">=</span> <span class="o">[&amp;</span><span class="n">lsquo</span><span class="o">;</span> <span class="o">&amp;</span><span class="n">rsquo</span><span class="o">;</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="err">\</span><span class="n">r</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="o">;</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="err">\</span><span class="n">t</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="o">;]</span>
+</span><span class='line'><span class="k">let</span> <span class="n">digit</span> <span class="o">=</span> <span class="o">[&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="mi">0</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="o">;&amp;</span><span class="n">ndash</span><span class="o">;&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="mi">9</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="o">;]</span>
+</span><span class='line'><span class="k">let</span> <span class="n">digits</span> <span class="o">=</span> <span class="n">digit</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span>
+</span><span class='line'><span class="k">let</span> <span class="n">alpha</span> <span class="o">=</span> <span class="o">[&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="n">a</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="o">;&amp;</span><span class="n">ndash</span><span class="o">;&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="n">z</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="o">;</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="nc">A</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="o">;&amp;</span><span class="n">ndash</span><span class="o">;&amp;</span><span class="n">lsquo</span><span class="o">;</span><span class="nc">Z</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="o">;]</span>
+</span><span class='line'><span class="k">let</span> <span class="n">iden</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">(</span><span class="n">alpha</span> <span class="o">|</span> <span class="n">digit</span> <span class="o">|</span> <span class="o">&amp;</span><span class="n">lsquo</span><span class="o">;_&amp;</span><span class="n">rsquo</span><span class="o">;)&lt;/</span><span class="n">em</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Now let&rsquo;s define a rule that will give us the actual tokens. As you can see the part between <em>{</em> and <em>}</em> is in <em>OCaml</em> syntax and just gives us back the tokens we&rsquo;ve defined.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="n">rule</span> <span class="n">micro</span> <span class="o">=</span> <span class="n">parse</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;|</span> <span class="s2">&quot;:=&quot;</span>     <span class="o">{</span> <span class="nc">ASSIGN</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="sc">&#39;+&#39;</span>      <span class="o">{</span> <span class="nc">ADDOP</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="sc">&#39;-&#39;</span>      <span class="o">{</span> <span class="nc">SUBOP</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="sc">&#39;,&#39;</span>      <span class="o">{</span> <span class="nc">COMMA</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="sc">&#39;;&#39;</span>      <span class="o">{</span> <span class="nc">SEMICOLON</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="sc">&#39;(&#39;</span>      <span class="o">{</span> <span class="nc">LEFTPAREN</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="sc">&#39;)&#39;</span>      <span class="o">{</span> <span class="nc">RIGHTPAREN</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="n">digits</span> <span class="k">as</span> <span class="n">d</span> <span class="o">{</span>
+</span><span class='line'>    <span class="c">(* parse literal *)</span>
+</span><span class='line'>    <span class="nc">LITERAL</span> <span class="o">(</span><span class="n">int_of_string</span> <span class="n">d</span><span class="o">)</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Now let&rsquo;s add the line counting and syntax error reporting to our <em>lexer.mll</em> header.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="o">(&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">current</span> <span class="n">token</span> <span class="n">line</span> <span class="n">number</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">line_num</span> <span class="o">=</span> <span class="n">ref</span> <span class="mi">1</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">exception</span> <span class="nc">Syntax_error</span> <span class="k">of</span> <span class="kt">string</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">syntax_error</span> <span class="n">msg</span> <span class="o">=</span> <span class="k">raise</span> <span class="o">(</span><span class="nc">Syntax_error</span> <span class="o">(</span><span class="n">msg</span> <span class="o">^</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span> <span class="n">on</span> <span class="n">line</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">^</span> <span class="o">(</span><span class="n">string_of_int</span> <span class="o">!</span><span class="n">line_num</span><span class="o">)))</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Next we&rsquo;ll add the rule for counting new lines and reporting syntax errors if lexer encounters unknown token. Also we need to generate <em>EOF</em> token when lexer will encounter the end of file. To skip blank characters, as those aren&rsquo;t need in our micro compiler, we&rsquo;ll just recursively call lexer&rsquo;s micro rule providing it with <em>lexbuf</em> which is described in manual.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="n">rule</span> <span class="n">micro</span> <span class="o">=</span> <span class="n">parse</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;.....</span>
+</span><span class='line'><span class="o">|</span> <span class="sc">&#39;\n&#39;</span>     <span class="o">{</span> <span class="n">incr</span> <span class="n">line_num</span><span class="o">;</span> <span class="n">micro</span> <span class="n">lexbuf</span> <span class="o">}</span> <span class="c">(* counting new line characters *)</span>
+</span><span class='line'><span class="o">|</span> <span class="n">blank</span>    <span class="o">{</span> <span class="n">micro</span> <span class="n">lexbuf</span> <span class="o">}</span> <span class="c">(* skipping blank characters *)</span>
+</span><span class='line'><span class="o">|</span> <span class="o">_</span>        <span class="o">{</span> <span class="n">syntax_error</span> <span class="s2">&quot;couldn&#39;t identify the token&quot;</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="n">eof</span>      <span class="o">{</span> <span class="nc">EOF</span> <span class="o">}</span> <span class="c">(* no more tokens *)</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Woah woaw wow, much forget, wait!!! Aren&rsquo;t we missing something?! Ah yes, identifiers, indeed! First of all let&rsquo;s define a table of known keywords in the header as we need to handle them differently.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="o">(&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">keyword</span> <span class="o">&amp;</span><span class="n">ndash</span><span class="o">;&gt;</span> <span class="n">token</span> <span class="n">translation</span> <span class="n">table</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">keywords</span> <span class="o">=</span> <span class="o">[&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="s2">&quot;begin&quot;</span><span class="o">,</span> <span class="nc">BEGIN</span><span class="o">;</span> <span class="s2">&quot;end&quot;</span><span class="o">,</span> <span class="nc">END</span><span class="o">;</span> <span class="s2">&quot;read&quot;</span><span class="o">,</span> <span class="nc">READ</span><span class="o">;</span> <span class="s2">&quot;write&quot;</span><span class="o">,</span> <span class="nc">WRITE</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;]</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>And now let&rsquo;s handle the actual identifier tokens.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="n">rule</span> <span class="n">micro</span> <span class="o">=</span> <span class="n">parse</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;.....</span>
+</span><span class='line'><span class="o">|</span> <span class="n">iden</span> <span class="k">as</span> <span class="n">i</span> <span class="o">{</span>
+</span><span class='line'>    <span class="c">(* try keywords if not found then it&#39;s identifier *)</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">l</span> <span class="o">=</span> <span class="nn">String</span><span class="p">.</span><span class="n">lowercase</span> <span class="n">i</span> <span class="k">in</span>
+</span><span class='line'>    <span class="k">try</span> <span class="nn">List</span><span class="p">.</span><span class="n">assoc</span> <span class="n">l</span> <span class="n">keywords</span>
+</span><span class='line'>    <span class="k">with</span> <span class="nc">Not_found</span> <span class="o">-&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="nc">IDENTIFIER</span> <span class="n">i</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Congratulations we have a lexer ready, now it&rsquo;s a parsing time! Let&rsquo;s define a parser for our micro code. Parser definition syntax is pretty straightforward and reminds kinds of <a href="https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_Form">BNF</a> definition.
+If you don&rsquo;t understand it just by looking at it or don&rsquo;t know what <em>BNF</em> is I suggest you take a look into description of definition syntax by consulting ocamlyacc manual.
+As you can see our parser starts with a program definition which starts with <em>begin statement</em> followed by <em>statements</em> and followed by <em>end statement</em> definitions and ends with <em>EOF</em> token.
+The part between <em>{</em> and <em>}</em> is <em>OCaml</em> source code that is executed after the parsing of the definition is done. When parser does it&rsquo;s job it raises <em>End_of_file</em> exception which we&rsquo;ll
+be handling as end of parsing. So basically when parser sees <em>BEGIN</em> token it just executes <em>generate_begin</em> function which we&rsquo;ll define shortly. Same with <em>END</em> token only now we are executing
+<em>generate_end</em> function instead. Statements definition is recursive and just references a <em>statement</em> followed by <em>semicolon</em> followed by more <em>statements</em> or none.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="o">%</span><span class="n">start</span> <span class="n">program</span>
+</span><span class='line'><span class="o">%</span><span class="k">type</span> <span class="o">&lt;</span><span class="kt">unit</span><span class="o">&gt;</span> <span class="n">program</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;%%&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">program</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span>   <span class="n">begin_stmt</span> <span class="n">statements</span> <span class="n">end_stmt</span> <span class="nc">EOF</span> <span class="o">{</span> <span class="k">raise</span> <span class="nc">End_of_file</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">begin_stmt</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span>   <span class="nc">BEGIN</span> <span class="o">{</span> <span class="n">generate_begin</span> <span class="bp">()</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">end_stmt</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span>   <span class="nc">END</span> <span class="o">{</span> <span class="n">generate_end</span> <span class="bp">()</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">statements</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span> <span class="o">{</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="n">statement</span> <span class="nc">SEMICOLON</span> <span class="n">statements</span> <span class="o">{</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Now let&rsquo;s write some code to generate the assembly for the <em>begin</em> and <em>end</em> statements. We&rsquo;ll put all our code generation functions into a separate module called <em>codegen</em> so let&rsquo;s create
+a new file called <em>codegen.ml</em> and add some code generation methods into it.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="o">(&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">code</span> <span class="n">generation</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">chan</span> <span class="o">=</span> <span class="n">ref</span> <span class="n">stdout</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">set_chan</span> <span class="n">new_chan</span> <span class="o">=</span> <span class="n">chan</span> <span class="o">:=</span> <span class="n">new_chan</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">gen</span> <span class="n">v</span> <span class="o">=</span> <span class="n">output_string</span> <span class="o">!</span><span class="n">chan</span> <span class="n">v</span><span class="o">;</span> <span class="n">output_string</span> <span class="o">!</span><span class="n">chan</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">generate_begin</span> <span class="bp">()</span> <span class="o">=</span> <span class="n">gen</span>
+</span><span class='line'><span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">extern</span> <span class="n">printf</span>
+</span><span class='line'><span class="n">extern</span> <span class="n">scanf</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">section</span> <span class="o">.</span><span class="n">data</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">inf</span><span class="o">:</span> <span class="n">db</span> <span class="k">&#39;</span><span class="o">%</span><span class="n">d&#39;</span><span class="o">,</span> <span class="mi">0</span>
+</span><span class='line'><span class="n">ouf</span><span class="o">:</span> <span class="n">db</span> <span class="k">&#39;</span><span class="o">%</span><span class="n">d&#39;</span><span class="o">,</span> <span class="mi">10</span><span class="o">,</span> <span class="mi">0</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">section</span> <span class="o">.</span><span class="n">text</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">global</span> <span class="n">main</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">main</span><span class="o">:&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="n">sub</span>   <span class="n">esp</span><span class="o">,</span> <span class="mi">4096</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="s2">&lt;/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="s2">&lt;p&gt;let generate_end () = gen</span>
+</span><span class='line'><span class="s2">&amp;ldquo;    add   esp, 4096</span>
+</span><span class='line'><span class="s2">exit:&lt;/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="s2">&lt;pre&gt;&lt;code&gt;mov  eax, 1 ; sys_exit</span>
+</span><span class='line'><span class="s2">mov  ebx, 0</span>
+</span><span class='line'><span class="s2">int  80h&quot;</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Now for parsing expression we need some way to count the depth of the expression for temporary variables so we&rsquo;ll be just incrementing it as we go deeper and then reset it to 0 after
+the statement is over. This approach is not optimized one as it would mean some extra stack usage for same depth AST nodes however for sake of simplicity we&rsquo;ll leave it as it is.
+So now our <em>parser.mly</em> header should look like this.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="o">%{&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">open</span> <span class="nc">Codegen</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">depth</span> <span class="o">=</span> <span class="n">ref</span> <span class="mi">0</span>
+</span><span class='line'><span class="k">let</span> <span class="n">depth_incr</span> <span class="n">f</span> <span class="o">=</span> <span class="n">incr</span> <span class="n">depth</span><span class="o">;</span> <span class="n">f</span> <span class="o">!</span><span class="n">depth</span>
+</span><span class='line'><span class="k">let</span> <span class="n">depth_reset</span> <span class="o">=</span> <span class="n">depth</span> <span class="o">:=</span> <span class="mi">0</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;%}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>So let&rsquo;s define description of <em>statement</em> in parser</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="n">statement</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span> <span class="nc">IDENTIFIER</span> <span class="nc">ASSIGN</span> <span class="n">expression</span> <span class="o">{</span> <span class="n">generate_assign</span> <span class="o">$</span><span class="mi">1</span> <span class="o">$</span><span class="mi">3</span><span class="o">;</span> <span class="n">depth_reset</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="nc">READ</span> <span class="nc">LEFTPAREN</span> <span class="n">identifier_list</span> <span class="nc">RIGHTPAREN</span> <span class="o">{</span> <span class="n">generate_reads</span> <span class="o">$</span><span class="mi">3</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="nc">WRITE</span> <span class="nc">LEFTPAREN</span> <span class="n">expression_list</span> <span class="nc">RIGHTPAREN</span> <span class="o">{</span> <span class="n">generate_writes</span> <span class="o">$</span><span class="mi">3</span><span class="o">;</span> <span class="n">depth_reset</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s start with simpler <em>read statement</em>. Now as you can see for <em>read statement</em> we are using identifiers only so we don&rsquo;t need to do anything with depth of expression so we aren&rsquo;t
+calling depth_reset function. Now in order to get identifier list we&rsquo;ll be just parsing identifiers and collecting them into the list.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="n">identifier_list</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span> <span class="nc">IDENTIFIER</span> <span class="o">{</span> <span class="o">[$</span><span class="mi">1</span><span class="o">]</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="nc">IDENTIFIER</span> <span class="nc">COMMA</span> <span class="n">identifier_list</span> <span class="o">{</span> <span class="o">$</span><span class="mi">1</span> <span class="o">::</span> <span class="o">$</span><span class="mi">3</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Now let&rsquo;s generate some assembly for reading data into identifiers. First let&rsquo;s start with some operation helper functions. The read statement is just pretty straightforward and
+just generates a scanf function call for every identifier.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">op</span> <span class="n">opcode</span> <span class="n">a</span> <span class="o">=</span> <span class="n">gen</span> <span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span>    <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">^</span> <span class="n">opcode</span> <span class="o">^</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span>  <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">^</span> <span class="n">a</span><span class="o">)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">op2</span> <span class="n">opcode</span> <span class="n">a</span> <span class="n">b</span> <span class="o">=</span> <span class="n">gen</span> <span class="o">(&amp;</span><span class="n">ldquo</span><span class="o">;</span>    <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">^</span> <span class="n">opcode</span> <span class="o">^</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span>  <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">^</span> <span class="n">a</span> <span class="o">^</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;,</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">^</span> <span class="n">b</span><span class="o">)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">push</span> <span class="n">a</span> <span class="o">=</span> <span class="n">op</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">push</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="n">a</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">generate_read</span> <span class="n">i</span> <span class="o">=</span> <span class="n">op2</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">lea</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">eax</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">(</span><span class="n">var_addr</span> <span class="n">i</span><span class="o">);&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>                  <span class="n">push</span> <span class="s2">&quot;eax&quot;</span><span class="o">;</span>
+</span><span class='line'>                  <span class="n">push</span> <span class="s2">&quot;inf&quot;</span><span class="o">;</span>
+</span><span class='line'>                  <span class="n">op</span> <span class="s2">&quot;call&quot;</span> <span class="s2">&quot;scanf&quot;</span><span class="o">;</span>
+</span><span class='line'>                  <span class="n">op2</span> <span class="s2">&quot;add &quot;</span> <span class="s2">&quot;esp&quot;</span> <span class="s2">&quot;8&quot;</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">generate_reads</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">iter</span> <span class="n">generate_read</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>As you can see we are using <em>var_addr</em> function which we didn&rsquo;t defined yet, this function will give us the actual offset address on the stack based on the name of identifier.
+We also handle <strong>__temp</strong> identifiers separately as those are just temporary variables which are discarded every time the statement is over, their offset is specified in their name after
+the <strong>__temp</strong> part, so for example <strong>__temp1</strong> is an temporary variable with offset 1. Let&rsquo;s write some code that handles all of this.  All the named variables that are defined are saved into
+<em>vars</em> <em>Hashtbl</em> that contains <em>variable name &ndash;> stack offset</em> information.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">exception</span> <span class="nc">Codegen_error</span> <span class="k">of</span> <span class="kt">string</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">codegen_error</span> <span class="n">msg</span> <span class="o">=</span> <span class="k">raise</span> <span class="o">(</span><span class="nc">Codegen_error</span> <span class="n">msg</span><span class="o">)&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">vars</span> <span class="o">=</span> <span class="n">ref</span> <span class="o">(</span><span class="nn">Hashtbl</span><span class="p">.</span><span class="n">create</span> <span class="mi">100</span><span class="o">)&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">var_addr</span> <span class="n">v</span> <span class="o">=</span> <span class="k">if</span> <span class="nn">String</span><span class="p">.</span><span class="n">length</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mi">6</span> <span class="o">&amp;</span><span class="n">amp</span><span class="o">;&amp;</span><span class="n">amp</span><span class="o">;</span> <span class="nn">String</span><span class="p">.</span><span class="n">sub</span> <span class="n">v</span> <span class="mi">0</span> <span class="mi">6</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;__</span><span class="n">temp</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>             <span class="k">then</span> <span class="k">let</span> <span class="n">i</span> <span class="o">=</span> <span class="nn">String</span><span class="p">.</span><span class="n">sub</span> <span class="n">v</span> <span class="mi">6</span> <span class="o">((</span><span class="nn">String</span><span class="p">.</span><span class="n">length</span> <span class="n">v</span><span class="o">)</span> <span class="o">-</span> <span class="mi">6</span><span class="o">)</span> <span class="k">in</span> <span class="s2">&quot;[esp+&quot;</span> <span class="o">^</span> <span class="n">i</span> <span class="o">^</span> <span class="s2">&quot;]&quot;</span>
+</span><span class='line'>             <span class="k">else</span>
+</span><span class='line'>             <span class="k">try</span> <span class="s2">&quot;[esp+&quot;</span> <span class="o">^</span> <span class="n">string_of_int</span> <span class="o">(</span><span class="nn">Hashtbl</span><span class="p">.</span><span class="n">find</span> <span class="o">!</span><span class="n">vars</span> <span class="n">v</span><span class="o">)</span> <span class="o">^</span> <span class="s2">&quot;]&quot;</span>
+</span><span class='line'>             <span class="k">with</span> <span class="nc">Not_found</span> <span class="o">-&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="n">codegen_error</span> <span class="o">(</span><span class="s2">&quot;identifier &quot;</span> <span class="o">^</span> <span class="n">v</span> <span class="o">^</span> <span class="s2">&quot; not defined&quot;</span><span class="o">)</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Now for the write statement instead of identifiers we could have expressions, so let&rsquo;s define those.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="n">expression_list</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span> <span class="n">expression</span> <span class="o">{</span> <span class="o">[$</span><span class="mi">1</span><span class="o">]</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="n">expression</span> <span class="nc">COMMA</span> <span class="n">expression_list</span> <span class="o">{</span> <span class="o">$</span><span class="mi">1</span> <span class="o">::</span> <span class="o">$</span><span class="mi">3</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>And the code that generates write statements is almost the same as read but instead of calling scanf we&rsquo;ll be calling printf function.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">generate_write</span> <span class="n">i</span> <span class="o">=</span> <span class="n">push</span> <span class="n">i</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>                   <span class="n">push</span> <span class="s2">&quot;ouf&quot;</span><span class="o">;</span>
+</span><span class='line'>                   <span class="n">op</span> <span class="s2">&quot;call&quot;</span> <span class="s2">&quot;printf&quot;</span><span class="o">;</span>
+</span><span class='line'>                   <span class="n">op2</span> <span class="s2">&quot;add &quot;</span> <span class="s2">&quot;esp&quot;</span> <span class="s2">&quot;8&quot;</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">generate_writes</span> <span class="o">=</span> <span class="nn">List</span><span class="p">.</span><span class="n">iter</span> <span class="n">generate_write</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s now declare an expression</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="n">expression</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span> <span class="nc">IDENTIFIER</span> <span class="o">{</span> <span class="n">var</span> <span class="o">$</span><span class="mi">1</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="nc">LITERAL</span> <span class="o">{</span> <span class="n">generate_literal</span> <span class="o">$</span><span class="mi">1</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="n">addop</span> <span class="o">{</span> <span class="o">$</span><span class="mi">1</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="n">subop</span> <span class="o">{</span> <span class="o">$</span><span class="mi">1</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>For simple cases expression can be just a <em>variable</em> or a <em>literal</em> so let&rsquo;s write some code that generates assembly for those.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">var</span> <span class="n">v</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">dword</span> <span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">^</span> <span class="o">(</span><span class="n">var_addr</span> <span class="n">v</span><span class="o">)&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">generate_literal</span> <span class="o">=</span> <span class="n">string_of_int</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Let&rsquo;s now handle <em>addition</em> and <em>substraction</em> expressions.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="n">addop</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span> <span class="nc">LITERAL</span> <span class="nc">ADDOP</span> <span class="nc">LITERAL</span> <span class="o">{</span> <span class="n">generate_literal</span> <span class="o">($</span><span class="mi">1</span> <span class="o">+</span> <span class="o">$</span><span class="mi">3</span><span class="o">)</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="n">expression</span> <span class="nc">ADDOP</span> <span class="n">expression</span> <span class="o">{</span> <span class="o">(</span><span class="n">depth_incr</span> <span class="n">generate_add</span><span class="o">)</span> <span class="o">$</span><span class="mi">1</span> <span class="o">$</span><span class="mi">3</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="n">subop</span><span class="o">:</span>
+</span><span class='line'><span class="o">|</span> <span class="nc">LITERAL</span> <span class="nc">SUBOP</span> <span class="nc">LITERAL</span> <span class="o">{</span> <span class="n">generate_literal</span> <span class="o">($</span><span class="mi">1</span> <span class="o">&amp;</span><span class="n">ndash</span><span class="o">;</span> <span class="o">$</span><span class="mi">3</span><span class="o">)</span> <span class="o">}</span>
+</span><span class='line'><span class="o">|</span> <span class="n">expression</span> <span class="nc">SUBOP</span> <span class="n">expression</span> <span class="o">{</span> <span class="o">(</span><span class="n">depth_incr</span> <span class="n">generate_sub</span><span class="o">)</span> <span class="o">$</span><span class="mi">1</span> <span class="o">$</span><span class="mi">3</span> <span class="o">}</span>
+</span><span class='line'><span class="o">;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>As you can see simple cases such as when we have literal from both sides are handled by our parser itself.
+Now let&rsquo;s write some more code generation functions for expressions. We&rsquo;ll be using temporary variables so
+we need to identify a bottom variable at the stack that will be on the top offset. And from there we&rsquo;ll use depth
+of current expression in order to have a unique position for the temporary variable. This part can be written
+slightly in a different way for example instead of counting depth we&rsquo;ll be counting the temporary variables and resetting them
+each time a statement is over. Both approaches are almost the same so we&rsquo;ll just leave it like that.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">bottom_var</span> <span class="bp">()</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">fold</span> <span class="o">(</span><span class="k">fun</span> <span class="o">_</span> <span class="n">v</span> <span class="n">c</span> <span class="o">&amp;</span><span class="n">ndash</span><span class="o">;&gt;</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;=</span> <span class="n">c</span> <span class="k">then</span> <span class="o">(</span><span class="n">v</span><span class="o">+</span><span class="mi">4</span><span class="o">)</span> <span class="k">else</span> <span class="n">c</span><span class="o">)</span> <span class="o">!</span><span class="n">vars</span> <span class="mi">0</span>
+</span><span class='line'><span class="k">let</span> <span class="n">empty_var</span> <span class="n">i</span> <span class="o">=</span> <span class="o">(</span><span class="n">bottom_var</span> <span class="bp">()</span><span class="o">)+(</span><span class="mi">4</span><span class="o">*(</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="o">))</span>
+</span><span class='line'><span class="k">let</span> <span class="n">temp_var</span> <span class="n">i</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;__</span><span class="n">temp</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;</span> <span class="o">^</span> <span class="o">(</span><span class="n">string_of_int</span> <span class="o">(</span><span class="n">empty_var</span> <span class="n">i</span><span class="o">))&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">is_var</span> <span class="n">v</span> <span class="o">=&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">re</span> <span class="o">=</span> <span class="nn">Str</span><span class="p">.</span><span class="n">regexp_string</span> <span class="s2">&quot;[esp+&quot;</span> <span class="k">in</span>
+</span><span class='line'><span class="k">try</span> <span class="n">ignore</span> <span class="o">(</span><span class="nn">Str</span><span class="p">.</span><span class="n">search_forward</span> <span class="n">re</span> <span class="n">v</span> <span class="mi">0</span><span class="o">);</span> <span class="bp">true</span>
+</span><span class='line'><span class="k">with</span> <span class="nc">Not_found</span> <span class="o">-&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="bp">false</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">generate_copy</span> <span class="n">a</span> <span class="n">b</span> <span class="o">=</span> <span class="k">if</span> <span class="n">a</span> <span class="o">=</span> <span class="n">b</span> <span class="k">then</span> <span class="bp">()</span> <span class="k">else</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>                    <span class="k">if</span> <span class="n">is_var</span> <span class="n">b</span> <span class="k">then</span> <span class="k">begin</span> <span class="n">op2</span> <span class="s2">&quot;mov &quot;</span> <span class="s2">&quot;eax&quot;</span> <span class="n">b</span><span class="o">;</span> <span class="n">op2</span> <span class="s2">&quot;mov &quot;</span> <span class="n">a</span> <span class="s2">&quot;eax&quot;</span> <span class="k">end</span>
+</span><span class='line'>                    <span class="k">else</span> <span class="n">op2</span> <span class="s2">&quot;mov &quot;</span> <span class="n">a</span> <span class="n">b</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">generate_add</span> <span class="n">d</span> <span class="n">id1</span> <span class="n">id2</span> <span class="o">=</span> <span class="k">let</span> <span class="n">v</span> <span class="o">=</span> <span class="n">var</span> <span class="o">(</span><span class="n">temp_var</span> <span class="n">d</span><span class="o">)</span> <span class="k">in</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>                         <span class="n">generate_copy</span> <span class="n">v</span> <span class="n">id1</span><span class="o">;</span>
+</span><span class='line'>                         <span class="k">if</span> <span class="n">is_var</span> <span class="n">id2</span> <span class="k">then</span> <span class="k">begin</span> <span class="n">op2</span> <span class="s2">&quot;mov &quot;</span> <span class="s2">&quot;eax&quot;</span> <span class="n">id2</span><span class="o">;</span> <span class="n">op2</span> <span class="s2">&quot;add &quot;</span> <span class="n">v</span> <span class="s2">&quot;eax&quot;</span> <span class="k">end</span>
+</span><span class='line'>                         <span class="k">else</span> <span class="n">op2</span> <span class="s2">&quot;add &quot;</span> <span class="n">v</span> <span class="n">id2</span><span class="o">;</span> <span class="n">v</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">generate_sub</span> <span class="n">d</span> <span class="n">id1</span> <span class="n">id2</span> <span class="o">=</span> <span class="k">let</span> <span class="n">v</span> <span class="o">=</span> <span class="n">var</span> <span class="o">(</span><span class="n">temp_var</span> <span class="n">d</span><span class="o">)</span> <span class="k">in</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>                         <span class="n">generate_copy</span> <span class="n">v</span> <span class="n">id1</span><span class="o">;</span>
+</span><span class='line'>                         <span class="k">if</span> <span class="n">is_var</span> <span class="n">id2</span> <span class="k">then</span> <span class="k">begin</span> <span class="n">op2</span> <span class="s2">&quot;mov &quot;</span> <span class="s2">&quot;eax&quot;</span> <span class="n">id2</span><span class="o">;</span> <span class="n">op2</span> <span class="s2">&quot;sub &quot;</span> <span class="n">v</span> <span class="s2">&quot;eax&quot;</span> <span class="k">end</span>
+</span><span class='line'>                         <span class="k">else</span> <span class="n">op2</span> <span class="s2">&quot;sub &quot;</span> <span class="n">v</span> <span class="n">id2</span><span class="o">;</span> <span class="n">v</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Now the only thing left to do is generate some code for <em>assignment</em> expression and our parser is done.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="k">let</span> <span class="n">is_alloc_var</span> <span class="n">v</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">mem</span> <span class="o">!</span><span class="n">vars</span> <span class="n">v</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">alloc_var</span> <span class="n">v</span> <span class="o">=</span> <span class="k">if</span> <span class="n">is_alloc_var</span> <span class="n">v</span> <span class="k">then</span> <span class="n">var</span> <span class="n">v</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>              <span class="k">else</span> <span class="k">let</span> <span class="o">_</span> <span class="o">=</span> <span class="nn">Hashtbl</span><span class="p">.</span><span class="n">replace</span> <span class="o">!</span><span class="n">vars</span> <span class="n">v</span> <span class="o">(</span><span class="n">empty_var</span> <span class="mi">1</span><span class="o">)</span> <span class="k">in</span> <span class="n">var</span> <span class="n">v</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">generate_assign</span> <span class="n">a</span> <span class="n">b</span> <span class="o">=</span> <span class="n">generate_copy</span> <span class="o">(</span><span class="n">alloc_var</span> <span class="n">a</span><span class="o">)</span> <span class="n">b</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>And now for the final part we need to write the actual compiling function. It will parse the micro source file specified as an argument and
+will compile it using <em>nasm</em> and <em>gcc</em>. Let&rsquo;s create <em>micro.ml</em> file and write some final code.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='ocaml'><span class='line'><span class="o">(&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">compiling</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;)</span>
+</span><span class='line'><span class="k">let</span> <span class="n">compile</span> <span class="n">f</span> <span class="o">=&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="k">let</span> <span class="n">out</span> <span class="o">=</span> <span class="o">(</span><span class="nn">Filename</span><span class="p">.</span><span class="n">chop_extension</span> <span class="n">f</span><span class="o">)</span> <span class="k">in</span>
+</span><span class='line'>    <span class="k">let</span> <span class="n">out_chan</span> <span class="o">=</span> <span class="n">open_out</span> <span class="o">(</span><span class="n">out</span> <span class="o">^</span> <span class="s2">&quot;.s&quot;</span><span class="o">)</span>
+</span><span class='line'>    <span class="ow">and</span> <span class="n">lexbuf</span> <span class="o">=</span> <span class="nn">Lexing</span><span class="p">.</span><span class="n">from_channel</span> <span class="o">(</span><span class="n">open_in</span> <span class="n">f</span><span class="o">)</span> <span class="k">in</span>
+</span><span class='line'>    <span class="k">try</span>
+</span><span class='line'>        <span class="k">let</span> <span class="k">rec</span> <span class="n">parse</span> <span class="bp">()</span> <span class="o">=</span>
+</span><span class='line'>            <span class="nn">Parser</span><span class="p">.</span><span class="n">program</span> <span class="nn">Lexer</span><span class="p">.</span><span class="n">micro</span> <span class="n">lexbuf</span><span class="o">;</span> <span class="n">parse</span> <span class="bp">()</span> <span class="k">in</span>
+</span><span class='line'>        <span class="nn">Codegen</span><span class="p">.</span><span class="n">set_chan</span> <span class="n">out_chan</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">ignore</span><span class="o">(</span><span class="n">parse</span> <span class="bp">()</span><span class="o">);</span>
+</span><span class='line'>    <span class="k">with</span>
+</span><span class='line'>      <span class="nc">End_of_file</span> <span class="o">-&amp;</span><span class="n">gt</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">begin</span>
+</span><span class='line'>            <span class="n">close_out</span> <span class="n">out_chan</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">ignore</span><span class="o">(</span><span class="nn">Sys</span><span class="p">.</span><span class="n">command</span> <span class="o">(</span><span class="s2">&quot;nasm -f elf32 &quot;</span> <span class="o">^</span> <span class="n">out</span> <span class="o">^</span> <span class="s2">&quot;.s&quot;</span><span class="o">));</span>
+</span><span class='line'>            <span class="n">ignore</span><span class="o">(</span><span class="nn">Sys</span><span class="p">.</span><span class="n">command</span> <span class="o">(</span><span class="s2">&quot;gcc -m32 -o &quot;</span> <span class="o">^</span> <span class="n">out</span> <span class="o">^</span> <span class="s2">&quot; &quot;</span> <span class="o">^</span> <span class="n">out</span> <span class="o">^</span> <span class="s2">&quot;.o&quot;</span><span class="o">))</span>
+</span><span class='line'>        <span class="k">end</span>
+</span><span class='line'>    <span class="o">|</span> <span class="nn">Lexer</span><span class="p">.</span><span class="nc">Syntax_error</span> <span class="n">s</span> <span class="o">-&amp;</span><span class="n">gt</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">print_string</span> <span class="n">s</span><span class="o">;</span>
+</span><span class='line'>        <span class="n">exit</span> <span class="mi">1</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="n">help</span> <span class="bp">()</span> <span class="o">=</span> <span class="n">print_string</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="o">;</span><span class="n">micro</span> <span class="o">&lt;</span><span class="n">file</span><span class="o">&gt;</span><span class="err">\</span><span class="n">n</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="o">;&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">let</span> <span class="bp">()</span> <span class="o">=</span> <span class="k">if</span> <span class="nn">Array</span><span class="p">.</span><span class="n">length</span> <span class="nn">Sys</span><span class="p">.</span><span class="n">argv</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">then</span> <span class="n">help</span> <span class="bp">()</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>     <span class="k">else</span>
+</span><span class='line'>         <span class="k">let</span> <span class="n">file</span> <span class="o">=</span> <span class="nn">Array</span><span class="p">.</span><span class="n">get</span> <span class="nn">Sys</span><span class="p">.</span><span class="n">argv</span> <span class="mi">1</span> <span class="k">in</span>
+</span><span class='line'>         <span class="nn">Format</span><span class="p">.</span><span class="n">printf</span> <span class="s2">&quot;compiling %s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="n">file</span><span class="o">;</span>
+</span><span class='line'>         <span class="nn">Format</span><span class="p">.</span><span class="n">print_flush</span> <span class="bp">()</span><span class="o">;</span>
+</span><span class='line'>         <span class="n">compile</span> <span class="n">file</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>Phew, writing posts is exhausting but finally our micro compiler is ready! Let&rsquo;s test it. You need to have <em>nasm</em> and <em>gcc</em> installed on your <em>Linux</em> system in order to run it.</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>./micro ./examples/hello.mc
+</span><span class='line'>./examples/hello
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>And it works! Congratulations! We are done! So what we learned today? Building compiler is actually easier than it seems! Happy compiling everyone!</p>
+
+<p><img src="http://i.imgur.com/cmm6AWx.jpg" alt="Sad Loli" /></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Writing Micro Compiler in OCaml]]></title>
@@ -66,7 +770,7 @@ As you can see from example source code the program starts with <strong>begin</s
 <p><strong>write</strong> takes a list of expressions and outputs them into <em>stdout</em></p>
 
 <p>Now in order to create an executable from this source code first we need to parse it. Since LL(1) type parser is enough to parse this kind of language, we&rsquo;ll need only one character lookahead.
- Unfortunately OCaml doesn&rsquo;t has an unread operation unlike libc&rsquo;s <strong>ungetc</strong> so we&rsquo;ll need to define a simple stream reader which will have a <em>mutable char</em> and we will also count lines of source code read.
+ Unfortunately OCaml doesn&rsquo;t have an unread operation like libc&rsquo;s <strong>ungetc</strong> so we&rsquo;ll need to define a simple stream reader which will have a <em>mutable char</em> and we will also count lines of source code read.
 We&rsquo;ll also define two utility functions which we will use later which will check if a character is alphanumeric and if it&rsquo;s a digit.
 <div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>

@@ -138,7 +138,7 @@ Instead of outputting pseudo assembly our micro compiler will output a real <a h
 <p><strong>write</strong> takes a list of expressions and outputs them into <em>stdout</em></p>
 
 <p>Now in order to create an executable from this source code first we need to parse it. Since LL(1) type parser is enough to parse this kind of language, we&rsquo;ll need only one character lookahead.
- Unfortunately OCaml doesn&rsquo;t has an unread operation unlike libc&rsquo;s <strong>ungetc</strong> so we&rsquo;ll need to define a simple stream reader which will have a <em>mutable char</em> and we will also count lines of source code read.
+ Unfortunately OCaml doesn&rsquo;t have an unread operation like libc&rsquo;s <strong>ungetc</strong> so we&rsquo;ll need to define a simple stream reader which will have a <em>mutable char</em> and we will also count lines of source code read.
 We&rsquo;ll also define two utility functions which we will use later which will check if a character is alphanumeric and if it&rsquo;s a digit.</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -940,6 +940,8 @@ is quite complex and entertaining task but it&rsquo;s definitely worth the time 
         <a class="basic-alignment left" href="/blog/2014/01/26/making-30-years-old-pascal-code-run-again/" title="Previous Post: Making 30 years old Pascal code run again">&laquo; Making 30 years old Pascal code run again</a>
       
       
+        <a class="basic-alignment right" href="/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/" title="Next Post: Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc">Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc &raquo;</a>
+      
     </p>
   </footer>
 </article>
@@ -967,6 +969,10 @@ is quite complex and entertaining task but it&rsquo;s definitely worth the time 
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/">Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a>
       </li>
     
@@ -980,10 +986,6 @@ is quite complex and entertaining task but it&rsquo;s definitely worth the time 
     
       <li class="post">
         <a href="/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/">Writing IRC Bot using Perl 5 and POCO::IRC</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/">Hosting your own remote private torrent tracker</a>
       </li>
     
   </ul>
