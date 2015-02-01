@@ -35,8 +35,14 @@
         <lastmod>2014-11-15T01:35:37+04:00</lastmod>
     </url>
     <url>
+        <loc>
+            http://troydm.github.io/blog/2015/01/25/write-you-a-monad-for-no-particular-reason-at-all/
+        </loc>
+        <lastmod>2015-02-01T20:48:12+04:00</lastmod>
+    </url>
+    <url>
         <loc>http://troydm.github.io/</loc>
-        <lastmod>2014-11-15T01:35:37+04:00</lastmod>
+        <lastmod>2015-02-01T20:48:12+04:00</lastmod>
     </url>
     <url>
         <loc>http://troydm.github.io/robots.txt</loc>
@@ -44,7 +50,7 @@
     </url>
     <url>
         <loc>http://troydm.github.io/blog/archives/</loc>
-        <lastmod>2014-11-15T01:35:37+04:00</lastmod>
+        <lastmod>2015-02-01T20:48:12+04:00</lastmod>
     </url>
     <url>
         <loc>http://troydm.github.io/about/</loc>
