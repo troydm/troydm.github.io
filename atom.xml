@@ -4,7 +4,7 @@
   <title><![CDATA[Troydm's Blog]]></title>
   <link href="http://troydm.github.io/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2015-02-01T20:49:29+04:00</updated>
+  <updated>2015-08-07T17:02:12+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -12,6 +12,1105 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Lifting Shadows off a Memory Allocation]]></title>
+    <link href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/"/>
+    <updated>2015-08-03T18:32:35+04:00</updated>
+    <id>http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation</id>
+    <content type="html"><![CDATA[<p>Any sufficiently advanced technology is indistinguishable from magic or so they say. Today we are going to lift some shadows from
+the very basic thing that is dynamic memory management in an application process. This knowledge is essential for anyone who wants to write his/her own <em>Programming Language</em> so gaining this knowledge is not an optional thing since it opens a whole new lever of understanding how dynamic memory is managed by application and is split between different applications. To do that we need to have some basic understanding of how the actual physical thing is used by operating system. For those who don&rsquo;t know anything about <em>Virtual Memory</em> or what <em>Memory Pages</em> are and which algorithms modern operating systems are using to manage those I suggest reading <a href="http://www.amazon.com/Operating-System-Concepts-Abraham-Silberschatz/dp/1118063333/">Operating Systems Concepts</a> and for those who want to know all the guts of how <em>Linux</em> does this under the hood there is <a href="http://www.amazon.com/Understanding-Linux-Kernel-Third-Daniel/dp/0596005652/">Understanding Linux Kernel</a>.
+<img src="http://i.imgur.com/VphDXNR.png" alt="Police Loli" /></p>
+
+<!--more-->
+
+
+<p>For the lazy rest to put it simply physical memory is split into fixed size blocks which are called <em>Memory Pages</em> and depending on the computer architecture and operating system can be 2kb 4kb 16kb 32kb or even 4mb in size. Anytime we request memory from operating system using some <em>syscall</em> it&rsquo;s best to have the size divisible by the actual operating operating system&rsquo;s <em>Memory Page</em> size. If used simply this tends to waste a lot of memory so hence we need a way to be more efficient with our requests and also we need to think of a way to recycle the memory requested before which isn&rsquo;t already needed by the application. All this opens a new area for exploration which is called Memory Allocation Algorithms and is quite a hot topic because not only we need to manage the recycling complexity but also concurrency and parallelism of the actual algorithms to be more efficient with modern multi-processor computers.
+Some notable examples of algorithm that do that and are used in real world are <a href="http://g.oswego.edu/dl/html/malloc.html">Doug Lea&rsquo;s malloc</a>, <a href="http://tlsf.baisoku.org/">TLSF</a> and <a href="http://www.canonware.com/jemalloc/">jemalloc</a>, also there are much more out there. In order to explore some basic ideas about memory allocators we&rsquo;ll write the simplest algorithm commonly called power of 2. The essential idea behind it is to split blocks of memory into sizes divisible by 2 such as 32, 64, 128 and etc. By doing so we could reuse already used blocks by breaking them into more smaller onces. For example 128 block can be broken into 2 blocks of 64 and each of them can also further be broken to 32 sized blocks.</p>
+
+<p><canvas id="memoryBlock" width="400" height="75"></canvas></p>
+
+<script>
+var c = document.getElementById("memoryBlock");
+var ctx = c.getContext("2d");
+ctx.font="normal 12pt Sans";
+ctx.fillStyle = "#F8D7BB";
+ctx.strokeStyle = "#000000";
+ctx.fillRect(0,0,400,75);
+ctx.moveTo(0,0);
+ctx.lineTo(400,0);
+ctx.stroke();
+ctx.moveTo(0,0);
+ctx.lineTo(0,75);
+ctx.stroke();
+ctx.moveTo(0,75);
+ctx.lineTo(400,75);
+ctx.stroke();
+ctx.moveTo(400,0);
+ctx.lineTo(400,75);
+ctx.stroke();
+ctx.moveTo(0,25);
+ctx.lineTo(400,25);
+ctx.stroke();
+ctx.moveTo(200,25);
+ctx.lineTo(200,75);
+ctx.stroke();
+ctx.moveTo(100,50);
+ctx.lineTo(100,75);
+ctx.stroke();
+ctx.moveTo(0,50);
+ctx.lineTo(200,50);
+ctx.stroke();
+ctx.moveTo(300,50);
+ctx.lineTo(300,75);
+ctx.stroke();
+ctx.moveTo(200,50);
+ctx.lineTo(400,50);
+ctx.stroke();
+ctx.moveTo(200,50);
+ctx.lineTo(400,50);
+ctx.stroke();
+ctx.fillStyle = "#000000";
+ctx.fillText("128",185,18);
+ctx.fillText("64",92,43);
+ctx.fillText("64",292,43);
+ctx.fillText("32",46,67);
+ctx.fillText("32",148,67);
+ctx.fillText("32",246,67);
+ctx.fillText("32",338,67);
+</script>
+
+
+<p>In general this tends to waste a lot of memory and introduces memory fragmentation. In worst case scenario half of all requested memory is wasted but usually in real world cases the actual number is near 25%. The memory wasting cost has computing performance gain as the algorithm itself is not hard to implement and works faster than more complex but conservative ones. Hence we are going to write a simple memory allocator also commonly called <em>malloc</em> since this is the library function name used by standard <em>C</em> library for allocating dynamic memory of variable size for the application process. We are going to implement our version of that function and related functions. Our target platform will be <em>Linux</em> and <em>gcc</em> compiler since we aren&rsquo;t going to bother with portability as this will take much more time and effort. Final version of source code can be browsed in <a href="https://github.com/troydm/mymalloc">mymalloc</a> repo but I strongly encourage you to write the whole thing from scratch yourself just to better understand the actual processes under the hood.</p>
+
+<p>First let&rsquo;s start with function definitions that we need to reimplement. Create a file called <strong>mymalloc.h</strong>. We&rsquo;ll also define some functions for debug/stats purposes as those will be helpful during development process. Note: all this functions are defined by glibc in linux so gcc will complain about them being redefined during compilation but you can ignore those messages.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span><span class="o">*</span> <span class="nf">calloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">nmemb</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">);</span>
+</span><span class='line'><span class="kt">void</span><span class="o">*</span> <span class="nf">malloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">s</span><span class="p">);</span>
+</span><span class='line'><span class="kt">void</span><span class="o">*</span> <span class="nf">realloc</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">p</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">ns</span><span class="p">);</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">free</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">p</span><span class="p">);</span>
+</span><span class='line'><span class="c1">// for debug use only</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">print_block_info</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">p</span><span class="p">);</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">print_freelist</span><span class="p">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s create a file called <strong>mymalloc.c</strong> and define the actual functions. We&rsquo;ll start with some initial values which are provided by operating system. The defined values are self explaining however I need to clarify the choice with 32 bytes for minimum block size. Since we&rsquo;ll manage memory blocks as doubly linked list nodes, each memory block needs to have space for at least two pointers and one size value which can&rsquo;t be more than the pointer size so that&rsquo;s 3 pointers for each node. Maximum size for 3 pointers for 64-bit operating system is 8 bytes so it&rsquo;s overall 24 bytes however block size needs to be power of 2 value and nearest size is 2<sup>5</sup> hence 32.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// for code clarity for pointers we use null instead of 0
+</span><span class='line'>#define null 0
+</span><span class='line'>
+</span><span class='line'>// initial values
+</span><span class='line'>#define PAGE_SIZE (sysconf(_SC_PAGESIZE))
+</span><span class='line'>#define MIN_BLOCK_SIZE 32 // bytes</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We need a place to save free memory blocks and a way to manage them so let&rsquo;s first describe what memory block is and define initial doubly linked list for it that will contain <em>start</em> and <em>end</em> nodes pointing at each other. Those nodes won&rsquo;t be used and are there just so that our code won&rsquo;t contain conditional <em>if</em> statements when handling nodes.</p>
+
+<p><canvas id="freelist" width="600" height="75"></canvas></p>
+
+<script>
+function drawRect(ctx,text,x,y,w,h){
+    ctx.fillRect(x,y,w,h);
+    ctx.moveTo(x,y);
+    ctx.lineTo(x,y+h);
+    ctx.stroke();
+    ctx.moveTo(x,y);
+    ctx.lineTo(x+w,y);
+    ctx.stroke();
+    ctx.moveTo(x+w,y);
+    ctx.lineTo(x+w,y+h);
+    ctx.stroke();
+    ctx.moveTo(x,y+h);
+    ctx.lineTo(x+w,y+h);
+    ctx.stroke();
+    var fs = ctx.fillStyle;
+    ctx.fillStyle = "#000000";
+    var tl = 16*text.length;
+    ctx.fillText(text,x+(w/2)-(tl/4),y+(h/2)+4);
+    ctx.fillStyle = fs;
+}
+
+function drawArrow(ctx,x1,y1,x2,y2){
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x2,y2);
+    ctx.stroke();
+
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x1+3,y1-4);
+    ctx.stroke();
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x1+3,y1+4);
+    ctx.stroke();
+
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-3,y2-4);
+    ctx.stroke();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-3,y2+4);
+    ctx.stroke();
+}
+
+var c = document.getElementById("freelist");
+var ctx = c.getContext("2d");
+ctx.font="normal 12pt Sans";
+ctx.fillStyle = "#F8D7BB";
+ctx.strokeStyle = "#000000";
+
+drawRect(ctx,"start",0,20,100,50);
+drawRect(ctx,"memory block",150,20,200,50);
+drawRect(ctx,"end",400,20,100,50);
+drawArrow(ctx,80,45,165,45);
+drawArrow(ctx,340,45,415,45);
+
+ctx.fillStyle = "#000000";
+ctx.fillText("Freelist",2,13);
+</script>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// memory block structure</span>
+</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="n">memory_block_t</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">size_t</span> <span class="n">size</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">memory_block_t</span><span class="o">*</span> <span class="n">prev</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">memory_block_t</span><span class="o">*</span> <span class="n">next</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span> <span class="n">memory_block</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// free memory block list</span>
+</span><span class='line'><span class="k">static</span> <span class="n">memory_block</span> <span class="n">freelist</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span> <span class="p">{</span> <span class="mi">0</span><span class="p">,</span> <span class="n">null</span><span class="p">,</span> <span class="o">&amp;</span><span class="p">(</span><span class="n">freelist</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="p">},</span>  <span class="p">{</span> <span class="mi">0</span><span class="p">,</span> <span class="o">&amp;</span><span class="p">(</span><span class="n">freelist</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">null</span><span class="p">}</span> <span class="p">};</span>
+</span><span class='line'><span class="cp">#define freelist_start (freelist[0].next)</span>
+</span><span class='line'><span class="cp">#define freelist_begin (&amp;(freelist[0]))</span>
+</span><span class='line'><span class="cp">#define freelist_end (&amp;(freelist[1]))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Note that when memory block will be used by an application it needs to have only size value reserved because we don&rsquo;t need doubly linked pointers as it&rsquo;s not in a free block list. Thus we need a method to reserve memory block&rsquo;s size field when we return it to the application. In order to ease interaction with memory block structure and it&rsquo;s pointers let&rsquo;s define some useful macros that will help us elevate the task of specifying casts manually. Pointer arithmetic can be sometimes daunting and puzzling in <em>C</em> but if used correctly it&rsquo;s very powerful feature and macro system helps us do exactly that. We also need an easy way to link two memory blocks with each other and even sometimes replace those links so we&rsquo;ll define some macros for that kind of operations too.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// useful macros
+</span><span class='line'>#define byte_ptr(p) ((uint8_t*)p)
+</span><span class='line'>#define shift_ptr(p,s) (byte_ptr(p)+s)
+</span><span class='line'>#define shift_block_ptr(b,s) ((memory_block*)(shift_ptr(b,s)))
+</span><span class='line'>#define block_data(b) (shift_ptr(b,sizeof(size_t)))
+</span><span class='line'>#define data_block(p) (shift_block_ptr(p,-sizeof(size_t)))
+</span><span class='line'>#define block_end(b) (shift_block_ptr(b,b->size))
+</span><span class='line'>
+</span><span class='line'>#define block_link(lb,rb) \
+</span><span class='line'>    rb->prev = lb; \
+</span><span class='line'>    lb->next = rb;
+</span><span class='line'>
+</span><span class='line'>#define block_link_left(lb,b) \
+</span><span class='line'>    block_link(b->prev,lb) \
+</span><span class='line'>    block_link(lb,b)
+</span><span class='line'>
+</span><span class='line'>#define block_link_right(b,rb) \
+</span><span class='line'>    block_link(rb,b->next) \
+</span><span class='line'>    block_link(b,rb)
+</span><span class='line'>
+</span><span class='line'>#define block_unlink(b) \
+</span><span class='line'>    block_link(b->prev,b->next)
+</span><span class='line'>
+</span><span class='line'>#define block_unlink_right(b) \
+</span><span class='line'>    block_unlink(b->next);
+</span><span class='line'>
+</span><span class='line'>#define block_replace(b,nb) \
+</span><span class='line'>    block_link(b->prev,nb) \
+</span><span class='line'>    block_link(nb,b->next)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s start with <em>malloc</em> function, first of all let&rsquo;s correct initial size and add to it <em>sizeof(size_t)</em> since each allocated by an application block will preserve it.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span><span class="o">*</span> <span class="nf">malloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">s</span><span class="p">){</span>
+</span><span class='line'>    <span class="c1">// check for 0 size</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">s</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'>    <span class="c1">// add size of size_t as we need to save size of memory block</span>
+</span><span class='line'>    <span class="n">s</span> <span class="o">+=</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">size_t</span><span class="p">);</span>
+</span><span class='line'>    <span class="c1">// find suitable memory size</span>
+</span><span class='line'>    <span class="kt">size_t</span> <span class="n">ns</span> <span class="o">=</span> <span class="n">find_optimal_memory_size</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next as you can see we need to find an optimal size for requested size <em>s</em>. We&rsquo;ll use a famous trick with bitwise shifting value to right in order to get optimal size for our memory block starting with <em>MIN_BLOCK_SIZE</em>. So the sizes in <em>while</em> loop will go from 32, 64, 128, 256 and further.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// find optimal memory block size for size s</span>
+</span><span class='line'><span class="k">static</span> <span class="kr">inline</span> <span class="kt">size_t</span> <span class="nf">find_optimal_memory_size</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">s</span><span class="p">){</span>
+</span><span class='line'>    <span class="kt">size_t</span> <span class="n">suitable_size</span> <span class="o">=</span> <span class="n">MIN_BLOCK_SIZE</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">while</span><span class="p">(</span><span class="n">suitable_size</span> <span class="o">&lt;</span> <span class="n">s</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">suitable_size</span> <span class="o">=</span> <span class="n">suitable_size</span> <span class="o">&lt;&lt;</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">suitable_size</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next we need to handle large memory blocks. We&rsquo;ll be allocating those using <em>mmap</em> <em>syscall</em> which gives us an arbitary memory block for requested size usually rounded to page size. In worst case we are loosing <em>PAGE_SIZE</em>-1 bytes, however for large memory blocks which we are going to handle separately we can ignore it because block might be resized using <em>mremap</em> <em>syscall</em> in the future reclaiming page which wasn&rsquo;t used entirely before.
+Note: we&rsquo;ve also added definition of MMAP_SIZE to our initial value definitions and set it equal to 1 MB.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>    <span class="c1">// if size is greater than or equals MMAP_SIZE we are going to use mmap</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">ns</span> <span class="o">&gt;=</span> <span class="n">MMAP_SIZE</span><span class="p">){</span>
+</span><span class='line'>        <span class="kt">void</span><span class="o">*</span> <span class="n">m</span> <span class="o">=</span> <span class="n">mmap</span><span class="p">(</span><span class="nb">NULL</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">PROT_READ</span><span class="o">|</span><span class="n">PROT_WRITE</span><span class="p">,</span><span class="n">MAP_PRIVATE</span><span class="o">|</span><span class="n">MAP_ANONYMOUS</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">m</span> <span class="o">==</span> <span class="n">MAP_FAILED</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">memory_block</span><span class="o">*</span><span class="p">)</span><span class="n">m</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">lock</span>
+</span><span class='line'>        <span class="n">mmap_size</span> <span class="o">+=</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">unlock</span>
+</span><span class='line'>        <span class="k">return</span> <span class="nf">block_data</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you&rsquo;ve already noticed we&rsquo;ve used strange <em>lock</em> and <em>unlock</em> macros there. That&rsquo;s because we&rsquo;ll also be counting overall <em>mmap</em> blocks in <em>mmap_size</em> variable purely for statistical purposes. However since <em>malloc</em> function can be called from different threads simultaneously we need a way to synchronize modifications to this variable. And not only this variable can be modified simultaneously. Unfortunately as we are striving for most efficiency we can&rsquo;t use immutable data structures for <em>freelist</em> and we need a way to concurrently modify it so that in the end all modifications would be consistent. Let&rsquo;s use atomic <a href="https://en.wikipedia.org/wiki/Spinlock">spinlock</a> for all our concurrency needs. For a description of what atomic spinlock is try reading <a href="https://idea.popcount.org/2012-09-12-reinventing-spinlocks/">Marek&rsquo;s Reinventing Spinlocks</a> as the code below was shamelessly copied from there. Also instead of simple freelist we could use lock-free doubly linked list data structure but since we are focusing our efforts on memory allocation I won&rsquo;t describe it in here.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// locking</span>
+</span><span class='line'><span class="k">volatile</span> <span class="n">bool</span> <span class="n">locked</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">spinlock</span><span class="p">(){</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">__sync_bool_compare_and_swap</span><span class="p">(</span><span class="o">&amp;</span><span class="n">locked</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)){</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="n">__sync_bool_compare_and_swap</span><span class="p">(</span><span class="o">&amp;</span><span class="n">locked</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+</span><span class='line'>                <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>            <span class="k">else</span><span class="p">{</span>
+</span><span class='line'>                <span class="k">if</span><span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="mi">10</span><span class="p">){</span>
+</span><span class='line'>                    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>                    <span class="n">sched_yield</span><span class="p">();</span>
+</span><span class='line'>                <span class="p">}</span><span class="k">else</span>
+</span><span class='line'>                    <span class="o">++</span><span class="n">i</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#define lock spinlock();</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#define unlock \</span>
+</span><span class='line'><span class="cp">    __asm__ __volatile__ (&quot;&quot; ::: &quot;memory&quot;); \</span>
+</span><span class='line'><span class="cp">    locked = 0;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s continue our effort with <em>malloc</em> function. Now we need to handle blocks with size less than <em>MMAP_SIZE</em></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>    <span class="n">lock</span>
+</span><span class='line'>    <span class="c1">// find free memory block</span>
+</span><span class='line'>    <span class="n">memory_block</span><span class="o">*</span> <span class="n">block</span> <span class="o">=</span> <span class="n">find_suitable_block</span><span class="p">(</span><span class="n">ns</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">block</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">unlock</span>
+</span><span class='line'>        <span class="c1">// shift pointer into data block pointer</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">block_data</span><span class="p">(</span><span class="n">block</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In order to find suitable block from memory list we&rsquo;ll just look through it.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// find suitable memory block for size s</span>
+</span><span class='line'><span class="k">static</span> <span class="kr">inline</span> <span class="n">memory_block</span><span class="o">*</span> <span class="nf">find_suitable_block</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">ns</span><span class="p">){</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="n">freelist_start</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">while</span><span class="p">(</span><span class="n">b</span> <span class="o">!=</span> <span class="n">freelist_end</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">ns</span><span class="p">){</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">split_memory_block</span><span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">ns</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now what if block is sufficient for our needs. We need to split it or return it whole if it&rsquo;s needed entirely. The half left will be added back to <em>freelist</em> if <em>remainder</em> is more than or equals <em>MIN_BLOCK_SIZE</em> since there is no way we could add a block with less size.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// split memory block into 2 pieces one of size s and the other is remainder e.g. memory_block_size-s</span>
+</span><span class='line'><span class="c1">// if remainder is less than MIN_BLOCK_SIZE we just take whole block</span>
+</span><span class='line'><span class="k">static</span> <span class="kr">inline</span> <span class="n">memory_block</span><span class="o">*</span> <span class="nf">split_memory_block</span><span class="p">(</span><span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">s</span><span class="p">){</span>
+</span><span class='line'>    <span class="kt">size_t</span> <span class="n">remainder</span> <span class="o">=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">-</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">remainder</span> <span class="o">&gt;=</span> <span class="n">MIN_BLOCK_SIZE</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">memory_block</span><span class="o">*</span> <span class="n">nb</span> <span class="o">=</span> <span class="n">shift_block_ptr</span><span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">nb</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">remainder</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">block_replace</span><span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">nb</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>        <span class="n">block_unlink</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">b</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>But wait, what if there are no free memory blocks? Let&rsquo;s allocate some memory from heap using <em>sbrk</em> <em>syscall</em>. Now the difference with <em>sbrk</em> versus <em>mmap</em> is that <em>sbrk</em> allocates continuous virtual memory or simply speaking grows heap outward (note: stack grows inward and heap outward so when those two meet each other ka-boom!). For those of you who don&rsquo;t know what heap is try reading <a href="http://www.geeksforgeeks.org/memory-layout-of-c-program/">this</a>. Unfortunately <em>sbrk</em> is slower than <em>mmap</em> performance-wise, but we need a specific property of memory allocated using <em>sbrk</em> so we&rsquo;ll be using it exclusively for that. Each newly allocated block has higher memory address than previous one and both of them are adjacent. We&rsquo;ll use this property to always have a sorted freelist in order to connect adjacent memory blocks more easily and quicker. This is our way to fight memory fragmentation. Also in order to minimize number of <em>sbrk</em> calls we&rsquo;ll allocate memory by larger chunks specified in <em>ALLOC_SIZE</em> instead of just number of pages we need.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>    <span class="c1">// no free memory blocks found</span>
+</span><span class='line'>    <span class="c1">// we need to allocate new one that would be suitable for our needs using sbrk</span>
+</span><span class='line'>    <span class="kt">size_t</span> <span class="n">pages_size</span> <span class="o">=</span> <span class="p">((</span><span class="n">ns</span><span class="o">/</span><span class="n">PAGE_SIZE</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">PAGE_SIZE</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">pages_size</span> <span class="o">&lt;</span> <span class="n">ALLOC_SIZE</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">pages_size</span> <span class="o">=</span> <span class="n">ALLOC_SIZE</span><span class="p">;</span>
+</span><span class='line'>    <span class="c1">// allocate memory with sbrk</span>
+</span><span class='line'>    <span class="kt">void</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">sbrk</span><span class="p">(</span><span class="n">pages_size</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">p</span> <span class="o">==</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">unlock</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next after allocating new block using <em>sbrk</em> we just split it and add back to <em>freelist</em>. We are also counting the overall heap size allocated by <em>sbrk</em> calls just for stats. Also we save <em>heap_start</em> and <em>heap_end</em> in order to distinguish memory blocks allocated using <em>sbrk</em> from <em>mmap</em> blocks.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>    <span class="n">block</span> <span class="o">=</span> <span class="p">(</span><span class="n">memory_block</span><span class="o">*</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">heap_size</span> <span class="o">+=</span> <span class="n">pages_size</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">ns</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">heap_end</span> <span class="o">=</span> <span class="n">shift_block_ptr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span><span class="n">pages_size</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">heap_start</span> <span class="o">=</span> <span class="n">shift_block_ptr</span><span class="p">(</span><span class="n">heap_end</span><span class="p">,</span><span class="o">-</span><span class="n">heap_size</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">ns</span> <span class="o">=</span> <span class="n">pages_size</span> <span class="o">-</span> <span class="n">ns</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">ns</span> <span class="o">&gt;=</span> <span class="n">MIN_BLOCK_SIZE</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="n">shift_block_ptr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span><span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">ns</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">add_block</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">unlock</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">block_data</span><span class="p">(</span><span class="n">block</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now the only thing left is to add the free block to the <em>freelist</em>. This might sound trivial but we need to handle a little bit more complexity than there might seem. First of all we need to insert blocks in sorted order. Next after inserting free block we need to merge it with adjacent blocks near on the left and right from it, if those blocks are continuously allocated in virtual memory space.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// add block to free list</span>
+</span><span class='line'><span class="k">static</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="nf">add_block</span><span class="p">(</span><span class="n">memory_block</span><span class="o">*</span> <span class="n">block</span><span class="p">){</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">freelist_start</span> <span class="o">!=</span> <span class="n">freelist_end</span><span class="p">){</span>
+</span><span class='line'>        <span class="c1">// find superseding memory block</span>
+</span><span class='line'>        <span class="c1">// and insert current one before it</span>
+</span><span class='line'>        <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="n">freelist_start</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">while</span><span class="p">(</span><span class="mi">1</span><span class="p">){</span>
+</span><span class='line'>            <span class="c1">// superseding memory block will have higher memory address</span>
+</span><span class='line'>            <span class="k">if</span><span class="p">(</span><span class="n">b</span> <span class="o">&gt;</span> <span class="n">block</span><span class="p">){</span>
+</span><span class='line'>                <span class="n">block_link_left</span><span class="p">(</span><span class="n">block</span><span class="p">,</span><span class="n">b</span><span class="p">);</span>
+</span><span class='line'>                <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="c1">// check if we hit end</span>
+</span><span class='line'>            <span class="k">if</span><span class="p">(</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">==</span> <span class="n">freelist_end</span><span class="p">){</span>
+</span><span class='line'>                <span class="n">block_link_right</span><span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">block</span><span class="p">);</span>
+</span><span class='line'>                <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>                <span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// merge adjacent blocks</span>
+</span><span class='line'>        <span class="n">bool</span> <span class="n">merged</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">while</span><span class="p">(</span><span class="n">merged</span><span class="p">){</span>
+</span><span class='line'>            <span class="c1">// merge right adjacent block</span>
+</span><span class='line'>            <span class="k">if</span><span class="p">(</span><span class="n">block_end</span><span class="p">(</span><span class="n">block</span><span class="p">)</span> <span class="o">==</span> <span class="n">block</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">){</span>
+</span><span class='line'>                <span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">+=</span> <span class="n">block</span><span class="o">-&gt;</span><span class="n">next</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">block_unlink_right</span><span class="p">(</span><span class="n">block</span><span class="p">);</span>
+</span><span class='line'>                <span class="k">continue</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="c1">// merge left adjacent block</span>
+</span><span class='line'>            <span class="k">if</span><span class="p">(</span><span class="n">block_end</span><span class="p">(</span><span class="n">block</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">)</span> <span class="o">==</span> <span class="n">block</span><span class="p">){</span>
+</span><span class='line'>                <span class="n">block</span> <span class="o">=</span> <span class="n">block</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">+=</span> <span class="n">block</span><span class="o">-&gt;</span><span class="n">next</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">block_unlink_right</span><span class="p">(</span><span class="n">block</span><span class="p">);</span>
+</span><span class='line'>                <span class="k">continue</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="n">merged</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>        <span class="c1">// add first memory block</span>
+</span><span class='line'>        <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="n">freelist_begin</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">block_link_right</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">block</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That&rsquo;s it with <em>malloc</em> now let&rsquo;s write <em>free</em>. As you can see below we check if memory block is allocated using <em>mmap</em> and <em>munmap</em> it. Otherwise we add it back to <em>freelist</em>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// mmap</span>
+</span><span class='line'><span class="cp">#define is_mmap_block(b) (!(heap_start &lt;= b &amp;&amp; b &lt; heap_end))</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">free</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">p</span><span class="p">){</span>
+</span><span class='line'>    <span class="c1">// check for null pointer</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">p</span> <span class="o">==</span> <span class="n">null</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">return</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// shift pointer back into memory block pointer</span>
+</span><span class='line'>    <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="n">data_block</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">lock</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">is_mmap_block</span><span class="p">(</span><span class="n">b</span><span class="p">)){</span>
+</span><span class='line'>        <span class="n">mmap_size</span> <span class="o">-=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">unlock</span>
+</span><span class='line'>        <span class="n">munmap</span><span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">return</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// add removed block into freelist</span>
+</span><span class='line'>    <span class="n">add_block</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally we are checking the end of heap and give back free memory to operating system using <em>sbrk</em> with negative size if the size is at least <em>GIVE_BACK_SIZE</em> which we&rsquo;ve also added to initial values.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>    <span class="c1">// give last memory block that isn&#39;t needed back to the operating system</span>
+</span><span class='line'>    <span class="n">b</span> <span class="o">=</span> <span class="n">freelist_end</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">block_end</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">==</span> <span class="n">heap_end</span><span class="p">){</span>
+</span><span class='line'>        <span class="kt">intptr_t</span> <span class="n">inc</span> <span class="o">=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">inc</span> <span class="o">&gt;=</span> <span class="n">GIVE_BACK_SIZE</span><span class="p">){</span>
+</span><span class='line'>            <span class="k">if</span><span class="p">(</span><span class="n">b</span> <span class="o">==</span> <span class="n">heap_start</span><span class="p">){</span>
+</span><span class='line'>                <span class="k">if</span><span class="p">(</span><span class="n">inc</span> <span class="o">&gt;</span> <span class="n">GIVE_BACK_SIZE</span><span class="p">){</span>
+</span><span class='line'>                    <span class="n">inc</span> <span class="o">=</span> <span class="n">inc</span> <span class="o">-</span> <span class="n">GIVE_BACK_SIZE</span><span class="p">;</span>
+</span><span class='line'>                    <span class="n">sbrk</span><span class="p">(</span><span class="o">-</span><span class="n">inc</span><span class="p">);</span>
+</span><span class='line'>                    <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">GIVE_BACK_SIZE</span><span class="p">;</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>            <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>                <span class="n">block_unlink</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+</span><span class='line'>                <span class="n">sbrk</span><span class="p">(</span><span class="o">-</span><span class="n">inc</span><span class="p">);</span>
+</span><span class='line'>                <span class="n">heap_size</span> <span class="o">-=</span> <span class="n">inc</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">heap_end</span> <span class="o">=</span> <span class="n">shift_block_ptr</span><span class="p">(</span><span class="n">heap_end</span><span class="p">,</span><span class="o">-</span><span class="n">inc</span><span class="p">);</span>
+</span><span class='line'>                <span class="n">heap_start</span> <span class="o">=</span> <span class="n">shift_block_ptr</span><span class="p">(</span><span class="n">heap_end</span><span class="p">,</span><span class="o">-</span><span class="n">heap_size</span><span class="p">);</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">unlock</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next after <em>free</em> let&rsquo;s implement <em>realloc</em>. As you can see it mostly repeats malloc, however we are using <em>mremap</em> for <em>mmap</em> blocks since those are already allocated and we need to resize them.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span><span class="o">*</span> <span class="nf">realloc</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">p</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">s</span><span class="p">){</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">p</span> <span class="o">==</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">malloc</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span><span class="k">else</span> <span class="k">if</span><span class="p">(</span><span class="n">s</span> <span class="o">==</span> <span class="mi">0</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">free</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// shift pointer back into memory block pointer</span>
+</span><span class='line'>    <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="n">data_block</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// find out which new optimal size we need</span>
+</span><span class='line'>    <span class="kt">size_t</span> <span class="n">ss</span> <span class="o">=</span> <span class="n">s</span><span class="o">+</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">size_t</span><span class="p">);</span>
+</span><span class='line'>    <span class="kt">size_t</span> <span class="n">ns</span> <span class="o">=</span> <span class="n">find_optimal_memory_size</span><span class="p">(</span><span class="n">ss</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// if memory is mmap we need to use mremap</span>
+</span><span class='line'>    <span class="n">lock</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">is_mmap_block</span><span class="p">(</span><span class="n">b</span><span class="p">)){</span>
+</span><span class='line'>        <span class="n">mmap_size</span> <span class="o">-=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">mmap_size</span> <span class="o">+=</span> <span class="n">ss</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">unlock</span>
+</span><span class='line'>        <span class="kt">void</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">mremap</span><span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">,</span><span class="n">ss</span><span class="p">,</span><span class="n">MREMAP_MAYMOVE</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">p</span> <span class="o">==</span> <span class="n">MAP_FAILED</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">memory_block</span><span class="o">*</span><span class="p">)</span><span class="n">p</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">ss</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">block_data</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next we check if block already contains the necessary size or the size can be obtained by connecting adjacent blocks.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">ns</span> <span class="o">&lt;</span> <span class="n">MMAP_SIZE</span><span class="p">){</span>
+</span><span class='line'>        <span class="c1">// check if size is already sufficient</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">ns</span><span class="p">){</span>
+</span><span class='line'>            <span class="n">unlock</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#ifdef MERGE_ADJ_ON_REALLOC</span>
+</span><span class='line'>        <span class="c1">// try merging with adjacent blocks</span>
+</span><span class='line'>        <span class="n">memory_block</span><span class="o">*</span> <span class="n">nb</span> <span class="o">=</span> <span class="n">merge_with_adjacent_block</span><span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">ns</span><span class="p">);</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">nb</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>            <span class="n">unlock</span>
+</span><span class='line'>            <span class="c1">// shift pointer into data block pointer</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">block_data</span><span class="p">(</span><span class="n">nb</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'><span class="cp">#endif</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">unlock</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Merging with adjacent block is quite complex operation thus we make it configurable so that if necessary we can always disable it. We handle both left and right adjacent cases. Left one is more complex and right one is simpler. Also we need to split block before connecting it with our initial one if the size has <em>remainder</em>, hence the complexity.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// merge with adjacent block so that overall new size would be s</span>
+</span><span class='line'><span class="k">static</span> <span class="kr">inline</span> <span class="n">memory_block</span><span class="o">*</span> <span class="nf">merge_with_adjacent_block</span><span class="p">(</span><span class="n">memory_block</span><span class="o">*</span> <span class="n">block</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">s</span><span class="p">){</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">freelist_start</span> <span class="o">==</span> <span class="n">freelist_end</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="n">freelist_start</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">memory_block</span><span class="o">*</span> <span class="n">be</span> <span class="o">=</span> <span class="n">block_end</span><span class="p">(</span><span class="n">block</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// left adjacent</span>
+</span><span class='line'>        <span class="c1">// code is slightly more complex as we need to copy data over</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">block_end</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">==</span> <span class="n">block</span><span class="p">){</span>
+</span><span class='line'>            <span class="k">if</span><span class="p">((</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">+</span> <span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">s</span><span class="p">){</span>
+</span><span class='line'>                <span class="kt">size_t</span> <span class="n">remainder</span> <span class="o">=</span> <span class="p">(</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">+</span> <span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">)</span> <span class="o">-</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>                <span class="c1">// we need to backup block pointers as they might be overwritten by memcpy</span>
+</span><span class='line'>                <span class="n">memory_block</span><span class="o">*</span> <span class="n">temp_prev</span> <span class="o">=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">memory_block</span><span class="o">*</span> <span class="n">temp_next</span> <span class="o">=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">memcpy</span><span class="p">(</span><span class="n">block_data</span><span class="p">(</span><span class="n">b</span><span class="p">),</span><span class="n">block_data</span><span class="p">(</span><span class="n">block</span><span class="p">),</span> <span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">-</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">size_t</span><span class="p">));</span>
+</span><span class='line'>                <span class="k">if</span><span class="p">(</span><span class="n">remainder</span> <span class="o">&gt;=</span> <span class="n">MIN_BLOCK_SIZE</span><span class="p">){</span>
+</span><span class='line'>                    <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>                    <span class="n">memory_block</span><span class="o">*</span> <span class="n">nb</span> <span class="o">=</span> <span class="n">shift_block_ptr</span><span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">s</span><span class="p">);</span>
+</span><span class='line'>                    <span class="n">nb</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">remainder</span><span class="p">;</span>
+</span><span class='line'>                    <span class="n">block_link</span><span class="p">(</span><span class="n">temp_prev</span><span class="p">,</span><span class="n">nb</span><span class="p">);</span>
+</span><span class='line'>                    <span class="n">block_link</span><span class="p">(</span><span class="n">nb</span><span class="p">,</span><span class="n">temp_next</span><span class="p">);</span>
+</span><span class='line'>                <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>                    <span class="c1">// unfortunetly here we can&#39;t use b-&gt;prev as </span>
+</span><span class='line'>                    <span class="c1">// it might have been overwritten by memcpy</span>
+</span><span class='line'>                    <span class="c1">// so we need to remove remaining block entirely using temporary pointers</span>
+</span><span class='line'>                    <span class="n">block_link</span><span class="p">(</span><span class="n">temp_prev</span><span class="p">,</span><span class="n">temp_next</span><span class="p">);</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">b</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// right adjacent</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">be</span> <span class="o">==</span> <span class="n">b</span><span class="p">){</span>
+</span><span class='line'>            <span class="k">if</span><span class="p">((</span><span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">+</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">s</span><span class="p">){</span>
+</span><span class='line'>                <span class="kt">size_t</span> <span class="n">remainder</span> <span class="o">=</span> <span class="p">(</span><span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">+</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">)</span> <span class="o">-</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>                <span class="k">if</span><span class="p">(</span><span class="n">remainder</span> <span class="o">&gt;=</span> <span class="n">MIN_BLOCK_SIZE</span><span class="p">){</span>
+</span><span class='line'>                    <span class="n">memory_block</span><span class="o">*</span> <span class="n">nb</span> <span class="o">=</span> <span class="n">shift_block_ptr</span><span class="p">(</span><span class="n">block</span><span class="p">,</span><span class="n">s</span><span class="p">);</span>
+</span><span class='line'>                    <span class="n">nb</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">remainder</span><span class="p">;</span>
+</span><span class='line'>                    <span class="n">block_replace</span><span class="p">(</span><span class="n">b</span><span class="p">,</span><span class="n">nb</span><span class="p">);</span>
+</span><span class='line'>                    <span class="n">block</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>                <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>                    <span class="n">block_unlink</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>                <span class="k">return</span> <span class="n">block</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="n">b</span> <span class="o">!=</span> <span class="n">freelist_end</span> <span class="o">&amp;&amp;</span> <span class="n">b</span> <span class="o">&gt;=</span> <span class="n">be</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally we handle the case when there is no memory to merge and no to resize. We just allocate a new memory and copy data over into it. Afterwards we deallocate the previous memory block.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'>    <span class="kt">void</span><span class="o">*</span> <span class="n">np</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">s</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">np</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>        <span class="c1">// copy old data block into new one</span>
+</span><span class='line'>        <span class="n">memcpy</span><span class="p">(</span><span class="n">np</span><span class="p">,</span><span class="n">p</span><span class="p">,</span><span class="n">s</span> <span class="o">&gt;</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">?</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span> <span class="o">:</span> <span class="n">s</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// free old data block</span>
+</span><span class='line'>        <span class="n">free</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// return newly allocated block</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">np</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Main work is done, remaining are just supplementary functions which are self explanatory.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span><span class="o">*</span> <span class="nf">calloc</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">nmemb</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">){</span>
+</span><span class='line'>    <span class="n">size</span> <span class="o">=</span> <span class="n">nmemb</span><span class="o">*</span><span class="n">size</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">void</span><span class="o">*</span> <span class="n">p</span> <span class="o">=</span> <span class="n">malloc</span><span class="p">(</span><span class="n">size</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">p</span> <span class="o">!=</span> <span class="n">null</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">memset</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">size</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">p</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">print_block_info</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span> <span class="n">p</span><span class="p">){</span>
+</span><span class='line'>    <span class="c1">// shift pointer back into memory block pointer</span>
+</span><span class='line'>    <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="n">data_block</span><span class="p">(</span><span class="n">p</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">lock</span>
+</span><span class='line'>    <span class="n">print_block</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">unlock</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">print_freelist</span><span class="p">(){</span>
+</span><span class='line'>    <span class="n">lock</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;[heap size %d mb mmap_size %d mb, &quot;</span><span class="p">,(</span><span class="n">heap_size</span><span class="o">/</span><span class="p">(</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">)),(</span><span class="n">mmap_size</span><span class="o">/</span><span class="p">(</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">)));</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot;freelist {&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">memory_block</span><span class="o">*</span> <span class="n">b</span> <span class="o">=</span> <span class="n">freelist_start</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">while</span><span class="p">(</span><span class="n">b</span> <span class="o">!=</span> <span class="n">freelist_end</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot; -&gt; %p[%u|%p|%p]&quot;</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">,</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">prev</span><span class="p">,</span><span class="n">b</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">);</span>
+</span><span class='line'>        <span class="c1">// detect infinite loop if any</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">b</span> <span class="o">==</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">){</span>
+</span><span class='line'>            <span class="n">printf</span><span class="p">(</span><span class="s">&quot; -&gt; infinite loop</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>            <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">unlock</span>
+</span><span class='line'>    <span class="n">printf</span><span class="p">(</span><span class="s">&quot; }</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now to test/benchmark this whole thing I wrote a little application which is called <em>memsim</em> and is in <a href="https://github.com/troydm/mymalloc/">mymalloc</a> repo. It reads memory allocation simulation file without requesting any dynamic memory from filesystem and calls malloc, realloc, free and user provided custom stats function while counting timings and overall runtime without using any heap memory, internally allocating memory on stack using <em>alloca</em> function, so that it&rsquo;s workings don&rsquo;t affecting the testing process. In order to generate a complex memory simulation (which is just a simple text file) I wrote <em>genrandms</em> application that just does that. Now a little benchmarks to compare our malloc with glibc <em>malloc</em> on some intense scenario. <em>mymemsim</em> and <em>sysmemsim</em> are <em>memsim</em> executables linked against our malloc implementation and glibc malloc implementation.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># Single threaded scenario repeat 50 times   </span>
+</span><span class='line'><span class="nv">$ </span>./mymemsim -t 1 -r 50 test.ms
+</span><span class='line'>memory simulation took 3457ms
+</span><span class='line'><span class="nv">$ </span>./sysmemsim -t 1 -r 50 test.ms
+</span><span class='line'>memory simulation took 15157ms
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s try a multithreading benchmark</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># Multi threaded 20 threads each repeat scenario 20 times</span>
+</span><span class='line'><span class="nv">$ </span>./mymemsim -t 20 -r 20 test.ms
+</span><span class='line'>memory simulation took 64268ms
+</span><span class='line'><span class="nv">$ </span>./sysmemsim -t 20 -r 20 test.ms
+</span><span class='line'>memory simulation took 117117ms
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Unfortunately our malloc implementation is not as multithread friendly as it can be. We literally have one single global spinlock and we always lock it when we allocate memory. We can improve on that by splitting <em>freelist</em> into different partitions. This will sacrifice memory fragmentation fighting however will improve scalability over multiple processors as we can have different spinlocks for each partition and won&rsquo;t have to wait between them. The implementation is more complex and can be studied in <a href="https://github.com/troydm/mymalloc">mymalloc</a> repo <strong>mysmalloc.c</strong> file despite overall idea being simple. Let&rsquo;s benchmark it again.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># Multi threaded 20 threads each repeat scenario 20 times</span>
+</span><span class='line'><span class="nv">$ </span>./mymemsim -t 20 -r 20 test.ms
+</span><span class='line'>memory simulation took 69510ms
+</span><span class='line'><span class="nv">$ </span>./mysmemsim -t 20 -r 20 test.ms
+</span><span class='line'>memory simulation took 43322ms
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see we&rsquo;ve improved performance by partially sacrificing fragmentation, improving scalability, and partially increasing memory usage. Further improvements and experiments are possible as possibilities are countless however our time has run out so that&rsquo;s it for today folks! Have a nice memory hacking time!
+<img src="http://i.imgur.com/qBrTRxO.png" alt="Smoking is bad for health" /></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Write you a Monad for no particular reason at all!]]></title>
@@ -210,7 +1309,7 @@ So if we have a function <strong>A</strong> <em>&ndash;></em> <strong>B</strong>
 
 
 <p>We can also fold a value over collection using a function. So basically if we have initial value of <strong>A</strong>, <em>Collection</em> of <strong>B</strong> and function that takes <strong>A</strong> <em>&ndash;></em> <strong>B</strong> <em>&ndash;></em> <strong>A</strong> we can fold it over by
-applying the function to an initial value and first object in <em>Collection</em> and then repeating the process with the result of this application with the rest of the <em>Collection</em>&rsquo;s objects.
+applying the function to an initial value and first object in <em>Collection</em> and then repeating the process with the result of this application with the rest of the <em>Collection</em> objects.
 In functional programming this is usually called left fold.</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -904,7 +2003,7 @@ returning empty value we return the monad itself since in the case of left value
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p>And now we are ready to implement <em>List</em> monoid which is basically a linked list of nodes that are either empty or contain a value and reference to next list node.
+<p>And now we are ready to implement <em>List</em> <em>Monoid</em> which is basically a linked list of nodes that are either empty or contain a value and reference to next list node.
 This implementing is ugly due to lack of <a href="http://en.wikipedia.org/wiki/Tail_call">TCO</a> in <strong>Java</strong>, however it&rsquo;s not too complex and just repeats any linked list implementation in <strong>Java</strong> or any other
 programming language.</p>
 

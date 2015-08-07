@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/java/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2015-02-01T20:49:29+04:00</updated>
+  <updated>2015-08-07T17:02:12+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -239,7 +239,7 @@ So if we have a function <strong>A</strong> <em>&ndash;></em> <strong>B</strong>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
 <p>We can also fold a value over collection using a function. So basically if we have initial value of <strong>A</strong>, <em>Collection</em> of <strong>B</strong> and function that takes <strong>A</strong> <em>&ndash;></em> <strong>B</strong> <em>&ndash;></em> <strong>A</strong> we can fold it over by
-applying the function to an initial value and first object in <em>Collection</em> and then repeating the process with the result of this application with the rest of the <em>Collection</em>&rsquo;s objects.
+applying the function to an initial value and first object in <em>Collection</em> and then repeating the process with the result of this application with the rest of the <em>Collection</em> objects.
 In functional programming this is usually called left fold.</p>
 
 <p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -1009,7 +1009,7 @@ returning empty value we return the monad itself since in the case of left value
 </span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;}</span>
 </span></code></pre></td></tr></table></div></figure></notextile></div></p>
 
-<p>And now we are ready to implement <em>List</em> monoid which is basically a linked list of nodes that are either empty or contain a value and reference to next list node.
+<p>And now we are ready to implement <em>List</em> <em>Monoid</em> which is basically a linked list of nodes that are either empty or contain a value and reference to next list node.
 This implementing is ugly due to lack of <a href="http://en.wikipedia.org/wiki/Tail_call">TCO</a> in <strong>Java</strong>, however it&rsquo;s not too complex and just repeats any linked list implementation in <strong>Java</strong> or any other
 programming language.</p>
 

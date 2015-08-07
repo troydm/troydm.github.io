@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: linux | Troydm's Blog]]></title>
-  <link href="http://troydm.github.io/blog/categories/linux/atom.xml" rel="self"/>
+  <title><![CDATA[Category: memory | Troydm's Blog]]></title>
+  <link href="http://troydm.github.io/blog/categories/memory/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
   <updated>2015-08-07T17:02:12+04:00</updated>
   <id>http://troydm.github.io/</id>
@@ -1305,67 +1305,6 @@ Now let&rsquo;s try a multithreading benchmark
 </span></code></pre></td></tr></table></div></figure></notextile></div>
 As you can see we&rsquo;ve improved performance by partially sacrificing fragmentation, improving scalability, and partially increasing memory usage. Further improvements and experiments are possible as possibilities are countless however our time has run out so that&rsquo;s it for today folks! Have a nice memory hacking time!
 <img src="http://i.imgur.com/qBrTRxO.png" alt="Smoking is bad for health" /></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Hosting your own remote private torrent tracker]]></title>
-    <link href="http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/"/>
-    <updated>2013-04-24T22:05:00+04:00</updated>
-    <id>http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker</id>
-    <content type="html"><![CDATA[<p>Ever wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
-
-<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but I won&rsquo;t consider them here!
-So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?</p>
-
-<p>Oh you don&rsquo;t? Snap it&rsquo;s it&rsquo;s so useful that nowadays almost everyone has some kind of NAS that he/she is using for file storage and torrents.
-So if you don&rsquo;t have one then you are behind of times</p>
-
-<p>So what do we need to share some file over torrent? Yes indeed we need a torrent tracker</p>
-
-<!-- more -->
-
-
-<p><a href="http://thepiratebay.se"><img src="https://thepiratebay.se/static/img/tpb.jpg" alt="The Pirate Bay" /></a></p>
-
-<p>You probably heard of the famous pirate bay arrr!&hellip; haven&rsquo;t you?
-Well pirate bay has a torrent tracker and you don&rsquo;t. So you either have a choice and become a pirate bay resident and upload your torrent on their site
-or you can host your own little pirate bay just for you and your friends only</p>
-
-<p>Most torrent clients include torrent tracker functionality out of the box but let&rsquo;s consider our little case were we a have headless home server with torrent client
-that has only web interface and no torrent tracker
-So what do we do? We run our own standalone torrent tracker!</p>
-
-<p>So that&rsquo;s how I&rsquo;ve ended on <a href="http://en.wikipedia.org/wiki/Comparison_of_BitTorrent_tracker_software">this page</a></p>
-
-<p>My first choice was <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a> which is a very popular tracker that even pirate bay uses on their servers.
-First thing I did I&rsquo;ve compiled and configured it in few mins and had it running on my <strong>6969</strong> port.
-So the next thing I&rsquo;ve created a torrent with my torrent tracker announce url specified as **<a href="http://192.168.0.x:6969/announce**">http://192.168.0.x:6969/announce**</a> using <a href="http://mktorrent.sourceforge.net/">mktorrent</a>
-and added it to my torrent client which started seeding it right away. The next step I&rsquo;ve created the same torrent file with announce url changed to my external ip and sent it to my friend!
-My friend started his torrent client and added the torrent. He could see that it had one seeder but still couldn&rsquo;t download the file. Simple troubleshooting revealed that my torrent tracker
-was listing my seeder peer with a local network ip address that my friend&rsquo;s torrent client couldn&rsquo;t connect to&hellip;</p>
-
-<p><img src="http://i.imgur.com/TCYjoCe.jpg" alt="Crying Loli" /></p>
-
-<p>I knew now what I needed from torrent tracker. My port was the same but my ip address should be external instead of internal.
-I needed local ip substituted with remote ip for all external network peers. The peer port would remain the same since i have the same port forwarded.</p>
-
-<p>Unfortunately I couldn&rsquo;t find any functionality in <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a> that would do that :(</p>
-
-<p>So next thing I did I&rsquo;ve downloaded <a href="https://code.google.com/p/udpt/">udpt</a> and had it compiled.
-It uses <a href="http://www.bittorrent.org/beps/bep_0015.html">udp tracker protocol</a> which is much more
-network efficient. <a href="https://code.google.com/p/udpt/">udpt</a> is much more smaller than <a href="https://erdgeist.org/arts/software/opentracker/">opentracker</a>
-in both source code and functionality and thus was ideal to experiment with.</p>
-
-<p>Adding the needed functionality didn&rsquo;t solved my problem because udpt had some other bugs that I had to track down but in a few hours i had everything up and working!
-In the end I had a fully working private torrent tracker that was doing what I was hoping for.
-I&rsquo;ve even added code to run it as linux daemon thanks to <a href="http://www.netzmafia.de/skripten/unix/linux-daemon-howto.html">this little howto</a></p>
-
-<p>My experimental fork is at <a href="https://github.com/troydm/udpt">this repository</a></p>
-
-<p><img src="http://i.imgur.com/M6W7RfM.png" alt="Pirate Loli" /></p>
-
-<p>Happy torrenting pirates!</p>
 ]]></content>
   </entry>
   
