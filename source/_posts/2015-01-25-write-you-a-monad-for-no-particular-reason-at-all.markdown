@@ -124,7 +124,7 @@ If we don't need results we can just do foreach over this *Collection* same way,
 {% endcodeblock %}
 
 We can also fold a value over collection using a function. So basically if we have initial value of **A**, *Collection* of **B** and function that takes **A** *->* **B** *->* **A** we can fold it over by
-applying the function to an initial value and first object in *Collection* and then repeating the process with the result of this application with the rest of the *Collection*'s objects.
+applying the function to an initial value and first object in *Collection* and then repeating the process with the result of this application with the rest of the *Collection* objects.
 In functional programming this is usually called left fold.
 
 {% codeblock lang:java %}
@@ -514,7 +514,7 @@ public abstract class AbstractMonoid<A> implements Monoid<A> {
 }
 {% endcodeblock %}
 
-And now we are ready to implement *List* monoid which is basically a linked list of nodes that are either empty or contain a value and reference to next list node.
+And now we are ready to implement *List* *Monoid* which is basically a linked list of nodes that are either empty or contain a value and reference to next list node.
 This implementing is ugly due to lack of [TCO](http://en.wikipedia.org/wiki/Tail_call) in **Java**, however it's not too complex and just repeats any linked list implementation in **Java** or any other 
 programming language.
 
