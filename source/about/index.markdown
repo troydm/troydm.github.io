@@ -8,6 +8,7 @@ footer: true
 Hello there curious stranger! 
 
 I'm software developer, functional programming enthusiast and open source evangelist from [Tbilisi, Georgia](https://en.wikipedia.org/wiki/Tbilisi)
+living in <a href="https://en.wikipedia.org/wiki/Kiev">Kiev, Ukraine</a>
 
 I'm also [anime addict](http://myanimelist.net/profile/Troydm) and I love playing console [jrpg games](https://en.wikipedia.org/wiki/Tales_%28series%29)
 
