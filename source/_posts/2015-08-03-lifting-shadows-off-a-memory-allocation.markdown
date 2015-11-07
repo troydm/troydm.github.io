@@ -6,6 +6,8 @@ comments: true
 categories: [linux, memory, c] 
 ---
 
+TL;DR *Writing power-of-2 malloc memory allocator in C*
+
 Any sufficiently advanced technology is indistinguishable from magic or so they say. Today we are going to lift some shadows from
 the very basic thing that is dynamic memory management in an application process. This knowledge is essential for anyone who wants to write his/her own *Programming Language* so gaining this knowledge is not an optional thing since it opens a whole new lever of understanding how dynamic memory is managed by application and is split between different applications. To do that we need to have some basic understanding of how the actual physical thing is used by operating system. For those who don't know anything about *Virtual Memory* or what *Memory Pages* are and which algorithms modern operating systems are using to manage those I suggest reading [Operating Systems Concepts](http://www.amazon.com/Operating-System-Concepts-Abraham-Silberschatz/dp/1118063333/) and for those who want to know all the guts of how *Linux* does this under the hood there is [Understanding Linux Kernel](http://www.amazon.com/Understanding-Linux-Kernel-Third-Daniel/dp/0596005652/). 
 ![Police Loli](http://i.imgur.com/VphDXNR.png)

@@ -6,6 +6,8 @@ comments: true
 categories: [perl, irc, shell]
 ---
 
+TL;DR *Writing IRC bot in Perl*
+
 Some people use [IRC](https://en.wikipedia.org/wiki/Internet_Relay_Chat) to chat, some don't. 
 It was invented a really long time ago and isn't going away anytime soon despite some new generation alternatives popping up like [Jabber](http://www.jabber.org/). 
 

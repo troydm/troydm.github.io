@@ -6,6 +6,8 @@ comments: true
 categories: [linux, gc, memory, c] 
 ---
 
+TL;DR *Writing tri-color (actually 4-color) incremental generational garbage collector in C*
+
 [Previously](http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/) we've talked about manual memory allocation and unraveled some shadows around it. 
 Now let's talk about automatic memory allocation, more specifically about [Garbage Collection](https://en.wikipedia.org/wiki/Garbage_collection_%28computer_science%29).
 Most if not all modern Programming Languages contain a mechanism that handles allocation of memory automatically at precisely the moment application needs it and deallocation of that

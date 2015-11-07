@@ -5,6 +5,9 @@ date: 2014-01-26 22:48
 comments: true
 categories: [pascal, fpc, prolog] 
 ---
+
+TL;DR *Fixing some really old Prolog implementation written in Pascal*
+
 Recently I've been interested in [Logic Programming](https://en.wikipedia.org/wiki/Logic_programming), notably in learning [Prolog](https://en.wikipedia.org/wiki/Prolog)
 so I'm in a process of reading two great books, [Programming for Artificial Intelligence](http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/) and 
 [The Art of Prolog](http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/). If you want to get a quick feel of *Prolog* I recommend you take a look at 

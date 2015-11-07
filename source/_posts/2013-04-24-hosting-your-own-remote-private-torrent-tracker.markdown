@@ -6,6 +6,8 @@ comments: true
 categories: [linux, torrent, c, programming]
 ---
 
+TL;DR *Modifying BitTorrent Tracker written in C++*
+
 Ever wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?
 
 [BitTorrent](http://bittorrent.org/) to rescue, also there are alternatives like hosting your own ftp/sftp file server but I won't consider them here!

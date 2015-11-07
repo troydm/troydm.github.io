@@ -5,6 +5,9 @@ date: 2014-03-29 19:12:25 +0400
 comments: true
 categories: [compiler, ocaml, asm]
 ---
+
+TL;DR *Writing micro compiler in OCaml*
+
 At one point or another every single software developer in the world comes to a realization in his career when the time is ripe and it's time 
 to write your own super cool programming language.
 

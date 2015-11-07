@@ -5,6 +5,9 @@ date: 2013-09-04 21:44
 comments: true
 categories: [scheme, lisp, server, client] 
 ---
+
+TL;DR *Writing data collecter, processor and broadcaster in Scheme*
+
 Any software developer who worked in financial industry will tell you that there are 
 few key requirements to programming applications for real time market. Applications should be as fast as possible and 
 they should be as easily modifiable as possible. First requirement is essential since getting and processing information

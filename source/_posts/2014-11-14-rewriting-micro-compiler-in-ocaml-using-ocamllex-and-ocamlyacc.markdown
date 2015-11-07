@@ -5,6 +5,9 @@ date: 2014-11-14 22:58:29 +0400
 comments: true
 categories: [compiler, ocaml, asm]
 ---
+
+TL;DR *Rewriting micro compiler in OCaml*
+
 In [my previous post](http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/) I've talked about writing micro compiler in OCaml under 300 lines of source code. There are number of ways to make our work easier and number of source code lines significantly smaller.
 
 ![Potato Loli](http://i.imgur.com/2q3i5KA.gif)
