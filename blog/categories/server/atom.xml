@@ -4,7 +4,7 @@
   <title><![CDATA[Category: server | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/server/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2015-11-08T03:34:02+04:00</updated>
+  <updated>2015-11-08T03:44:50+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -18,7 +18,9 @@
     <link href="http://troydm.github.io/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme/"/>
     <updated>2013-09-04T21:44:00+04:00</updated>
     <id>http://troydm.github.io/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme</id>
-    <content type="html"><![CDATA[<p>Any software developer who worked in financial industry will tell you that there are
+    <content type="html"><![CDATA[<p>TL;DR <em>Writing data collecter, processor and broadcaster in Scheme</em></p>
+
+<p>Any software developer who worked in financial industry will tell you that there are
 few key requirements to programming applications for real time market. Applications should be as fast as possible and
 they should be as easily modifiable as possible. First requirement is essential since getting and processing information
 takes time and sending processed information takes even additional precious time, and in financial world time equals money.

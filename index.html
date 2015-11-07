@@ -9,8 +9,7 @@
   <meta name="author" content="Dmitry Geurkov">
 
   
-  <meta name="description" content="Previously we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
-Now let&rsquo;s talk about automatic memory &hellip;">
+  <meta name="description" content="TL;DR Writing tri-color (actually 4-color) generational garbage collector in C Previously we&rsquo;ve talked about manual memory allocation and &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -97,7 +96,9 @@ Now let&rsquo;s talk about automatic memory &hellip;">
   </header>
 
 
-  <div class="entry-content"><p><a href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Previously</a> we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
+  <div class="entry-content"><p>TL;DR <em>Writing tri-color (actually 4-color) generational garbage collector in C</em></p>
+
+<p><a href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Previously</a> we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
 Now let&rsquo;s talk about automatic memory allocation, more specifically about <a href="https://en.wikipedia.org/wiki/Garbage_collection_%28computer_science%29">Garbage Collection</a>.
 Most if not all modern Programming Languages contain a mechanism that handles allocation of memory automatically at precisely the moment application needs it and deallocation of that
 memory at the moment it&rsquo;s not needed anymore. However determining when memory region (or object) is safe to deallocate is not an easy feat as we need to somehow determine if the region is needed or not.
@@ -146,7 +147,9 @@ And here is where <em>Garbage Collection</em> comes into a play. Simply speaking
   </header>
 
 
-  <div class="entry-content"><p>Any sufficiently advanced technology is indistinguishable from magic or so they say. Today we are going to lift some shadows from
+  <div class="entry-content"><p>TL;DR <em>Writing power-of-2 malloc memory allocator in C</em></p>
+
+<p>Any sufficiently advanced technology is indistinguishable from magic or so they say. Today we are going to lift some shadows from
 the very basic thing that is dynamic memory management in an application process. This knowledge is essential for anyone who wants to write his/her own <em>Programming Language</em> so gaining this knowledge is not an optional thing since it opens a whole new lever of understanding how dynamic memory is managed by application and is split between different applications. To do that we need to have some basic understanding of how the actual physical thing is used by operating system. For those who don&rsquo;t know anything about <em>Virtual Memory</em> or what <em>Memory Pages</em> are and which algorithms modern operating systems are using to manage those I suggest reading <a href="http://www.amazon.com/Operating-System-Concepts-Abraham-Silberschatz/dp/1118063333/">Operating Systems Concepts</a> and for those who want to know all the guts of how <em>Linux</em> does this under the hood there is <a href="http://www.amazon.com/Understanding-Linux-Kernel-Third-Daniel/dp/0596005652/">Understanding Linux Kernel</a>.
 <img src="http://i.imgur.com/VphDXNR.png" alt="Police Loli" /></p>
 
@@ -189,7 +192,9 @@ the very basic thing that is dynamic memory management in an application process
   </header>
 
 
-  <div class="entry-content"><p><a href="http://en.wikipedia.org/wiki/Functional_programming">Functional Programming</a> paradigm and languages that fully utilize it&rsquo;s benefits are slowly gaining popularity nowadays not only in academia but also in enterprise becoming de facto standard for future generations of programmers. Maybe in 10 years from now humanity will come up with a better idea of how to make bug-free quality software that does the job and takes less effort to produce, however currently we are living in a century of <em>Object Oriented</em> programming systems slowly morphing into <em>Functional Programming</em> systems. There are a lot of learning resources on internet about <a href="https://www.quora.com/What-are-some-good-resources-for-learning-about-functional-programming-Why">Function Programming</a> in general and Functional Languages such as <a href="https://www.haskell.org/">Haskell</a>, <a href="http://www.erlang.org/">Erlang</a>, <a href="http://www.scala-lang.org/">Scala</a>, <a href="http://clojure.org/">Clojure</a> and many other. You all probably heard about <a href="http://learnyouahaskell.com/">Learn you a Haskell for Great Good</a> book, a really bright, colorful and interesting book that got me into Haskell programming few years ago. Some of you may even tried reading it. I think most of people without prior functional programming experience that start reading it sooner or later hit a bottom of their mental capacity while trying to comprehend <em>Monads</em>. This article is intended for this people! Yes this post is all about <em>Functors</em> and <em>Monads</em> you heard it right! In order to explore the ideas of functional programming let&rsquo;s create a small functional programming library in <strong>Java</strong> that will have <em>Functors</em> and <em>Monads</em> and by doing so learn about functional programming from a really unusual perspective of using Object Oriented programming. Our target compiler will be <strong>Java 6</strong> (yes we won&rsquo;t be using new fancy <strong>Java 8</strong>) as most of the people that are reading this now are probably more familiar with it rather than newer version. For those of you who are too lazy to follow can check the whole thing at my <a href="https://github.com/troydm/fpj">fpj</a> repository, however I strongly encourage you to try reimplement it all by yourself from scratch. The information described in this post implies that you have prior experience or basic understand of <em>Monads</em> but want to better understand them internally. So let&rsquo;s get to work!</p>
+  <div class="entry-content"><p>TL;DR <em>Writing functional programming library in Java</em></p>
+
+<p><a href="http://en.wikipedia.org/wiki/Functional_programming">Functional Programming</a> paradigm and languages that fully utilize it&rsquo;s benefits are slowly gaining popularity nowadays not only in academia but also in enterprise becoming de facto standard for future generations of programmers. Maybe in 10 years from now humanity will come up with a better idea of how to make bug-free quality software that does the job and takes less effort to produce, however currently we are living in a century of <em>Object Oriented</em> programming systems slowly morphing into <em>Functional Programming</em> systems. There are a lot of learning resources on internet about <a href="https://www.quora.com/What-are-some-good-resources-for-learning-about-functional-programming-Why">Function Programming</a> in general and Functional Languages such as <a href="https://www.haskell.org/">Haskell</a>, <a href="http://www.erlang.org/">Erlang</a>, <a href="http://www.scala-lang.org/">Scala</a>, <a href="http://clojure.org/">Clojure</a> and many other. You all probably heard about <a href="http://learnyouahaskell.com/">Learn you a Haskell for Great Good</a> book, a really bright, colorful and interesting book that got me into Haskell programming few years ago. Some of you may even tried reading it. I think most of people without prior functional programming experience that start reading it sooner or later hit a bottom of their mental capacity while trying to comprehend <em>Monads</em>. This article is intended for this people! Yes this post is all about <em>Functors</em> and <em>Monads</em> you heard it right! In order to explore the ideas of functional programming let&rsquo;s create a small functional programming library in <strong>Java</strong> that will have <em>Functors</em> and <em>Monads</em> and by doing so learn about functional programming from a really unusual perspective of using Object Oriented programming. Our target compiler will be <strong>Java 6</strong> (yes we won&rsquo;t be using new fancy <strong>Java 8</strong>) as most of the people that are reading this now are probably more familiar with it rather than newer version. For those of you who are too lazy to follow can check the whole thing at my <a href="https://github.com/troydm/fpj">fpj</a> repository, however I strongly encourage you to try reimplement it all by yourself from scratch. The information described in this post implies that you have prior experience or basic understand of <em>Monads</em> but want to better understand them internally. So let&rsquo;s get to work!</p>
 
 <p><img src="http://i.imgur.com/xT0ABh8.gif" alt="Rikka loli" /></p>
 
@@ -232,7 +237,9 @@ the very basic thing that is dynamic memory management in an application process
   </header>
 
 
-  <div class="entry-content"><p>In <a href="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/">my previous post</a> I&rsquo;ve talked about writing micro compiler in OCaml under 300 lines of source code. There are number of ways to make our work easier and number of source code lines significantly smaller.</p>
+  <div class="entry-content"><p>TL;DR <em>Rewriting micro compiler in OCaml</em></p>
+
+<p>In <a href="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/">my previous post</a> I&rsquo;ve talked about writing micro compiler in OCaml under 300 lines of source code. There are number of ways to make our work easier and number of source code lines significantly smaller.</p>
 
 <p><img src="http://i.imgur.com/2q3i5KA.gif" alt="Potato Loli" /></p>
 
@@ -282,7 +289,9 @@ Pretty neat indeed, and it&rsquo;s actually easier to use than it sounds so let&
   </header>
 
 
-  <div class="entry-content"><p>At one point or another every single software developer in the world comes to a realization in his career when the time is ripe and it&rsquo;s time
+  <div class="entry-content"><p>TL;DR <em>Writing micro compiler in OCaml</em></p>
+
+<p>At one point or another every single software developer in the world comes to a realization in his career when the time is ripe and it&rsquo;s time
 to write your own super cool programming language.</p>
 
 <p><img src="http://i.imgur.com/KSiXBCN.png" alt="Lemon Loli" /></p>
@@ -336,7 +345,9 @@ Instead of outputting pseudo assembly our micro compiler will output a real <a h
   </header>
 
 
-  <div class="entry-content"><p>Recently I&rsquo;ve been interested in <a href="https://en.wikipedia.org/wiki/Logic_programming">Logic Programming</a>, notably in learning <a href="https://en.wikipedia.org/wiki/Prolog">Prolog</a>
+  <div class="entry-content"><p>TL;DR <em>Fixing some really old Prolog implementation written in Pascal</em></p>
+
+<p>Recently I&rsquo;ve been interested in <a href="https://en.wikipedia.org/wiki/Logic_programming">Logic Programming</a>, notably in learning <a href="https://en.wikipedia.org/wiki/Prolog">Prolog</a>
 so I&rsquo;m in a process of reading two great books, <a href="http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/">Programming for Artificial Intelligence</a> and
 <a href="http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/">The Art of Prolog</a>. If you want to get a quick feel of <em>Prolog</em> I recommend you take a look at
 Bernardo Pires&rsquo;s <a href="https://bernardopires.com/2013/10/try-logic-programming-a-gentle-introduction-to-prolog/">Gentle Introduction to Prolog</a> and <a href="http://prologomenon.wordpress.com/">Prologomenon</a> blog.
@@ -389,7 +400,9 @@ with <a href="http://www.freepascal.org/">Free Pascal Compiler</a> and because&h
   </header>
 
 
-  <div class="entry-content"><p>Any software developer who worked in financial industry will tell you that there are
+  <div class="entry-content"><p>TL;DR <em>Writing data collecter, processor and broadcaster in Scheme</em></p>
+
+<p>Any software developer who worked in financial industry will tell you that there are
 few key requirements to programming applications for real time market. Applications should be as fast as possible and
 they should be as easily modifiable as possible. First requirement is essential since getting and processing information
 takes time and sending processed information takes even additional precious time, and in financial world time equals money.
@@ -436,7 +449,9 @@ Second requirement is determined by constantly changing business rules imposed o
   </header>
 
 
-  <div class="entry-content"><p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don&rsquo;t.
+  <div class="entry-content"><p>TL;DR <em>Writing IRC bot in Perl</em></p>
+
+<p>Some people use <a href="https://en.wikipedia.org/wiki/Internet_Relay_Chat">IRC</a> to chat, some don&rsquo;t.
 It was invented a really long time ago and isn&rsquo;t going away anytime soon despite some new generation alternatives popping up like <a href="http://www.jabber.org/">Jabber</a>.</p>
 
 <p>Personally I always have my IRC client running (I&rsquo;m using <a href="http://weechat.org/">weechat</a> + <a href="http://tmux.sourceforge.net/">tmux</a>) and chat with lots of interesting people
@@ -490,7 +505,9 @@ using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC
   </header>
 
 
-  <div class="entry-content"><p>Ever wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
+  <div class="entry-content"><p>TL;DR <em>Modifying BitTorrent Tracker written in C++</em></p>
+
+<p>Ever wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
 
 <p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but I won&rsquo;t consider them here!
 So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?</p>

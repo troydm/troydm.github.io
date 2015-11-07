@@ -4,7 +4,7 @@
   <title><![CDATA[Category: prolog | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/prolog/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2015-11-08T03:34:02+04:00</updated>
+  <updated>2015-11-08T03:44:50+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -18,7 +18,9 @@
     <link href="http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again/"/>
     <updated>2014-01-26T22:48:00+04:00</updated>
     <id>http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again</id>
-    <content type="html"><![CDATA[<p>Recently I&rsquo;ve been interested in <a href="https://en.wikipedia.org/wiki/Logic_programming">Logic Programming</a>, notably in learning <a href="https://en.wikipedia.org/wiki/Prolog">Prolog</a>
+    <content type="html"><![CDATA[<p>TL;DR <em>Fixing some really old Prolog implementation written in Pascal</em></p>
+
+<p>Recently I&rsquo;ve been interested in <a href="https://en.wikipedia.org/wiki/Logic_programming">Logic Programming</a>, notably in learning <a href="https://en.wikipedia.org/wiki/Prolog">Prolog</a>
 so I&rsquo;m in a process of reading two great books, <a href="http://www.amazon.com/Prolog-Programming-Artificial-Intelligence-Bratko/dp/0201403757/">Programming for Artificial Intelligence</a> and
 <a href="http://www.amazon.com/The-Art-Prolog-Programming-Techniques/dp/0262192500/">The Art of Prolog</a>. If you want to get a quick feel of <em>Prolog</em> I recommend you take a look at
 Bernardo Pires&rsquo;s <a href="https://bernardopires.com/2013/10/try-logic-programming-a-gentle-introduction-to-prolog/">Gentle Introduction to Prolog</a> and <a href="http://prologomenon.wordpress.com/">Prologomenon</a> blog.

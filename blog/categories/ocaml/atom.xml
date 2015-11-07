@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ocaml | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/ocaml/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2015-11-08T03:34:02+04:00</updated>
+  <updated>2015-11-08T03:44:50+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -18,7 +18,9 @@
     <link href="http://troydm.github.io/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/"/>
     <updated>2014-11-14T22:58:29+04:00</updated>
     <id>http://troydm.github.io/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc</id>
-    <content type="html"><![CDATA[<p>In <a href="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/">my previous post</a> I&rsquo;ve talked about writing micro compiler in OCaml under 300 lines of source code. There are number of ways to make our work easier and number of source code lines significantly smaller.</p>
+    <content type="html"><![CDATA[<p>TL;DR <em>Rewriting micro compiler in OCaml</em></p>
+
+<p>In <a href="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/">my previous post</a> I&rsquo;ve talked about writing micro compiler in OCaml under 300 lines of source code. There are number of ways to make our work easier and number of source code lines significantly smaller.</p>
 
 <p><img src="http://i.imgur.com/2q3i5KA.gif" alt="Potato Loli" /></p>
 
@@ -722,7 +724,9 @@ will compile it using <em>nasm</em> and <em>gcc</em>. Let&rsquo;s create <em>mic
     <link href="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/"/>
     <updated>2014-03-29T19:12:25+04:00</updated>
     <id>http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml</id>
-    <content type="html"><![CDATA[<p>At one point or another every single software developer in the world comes to a realization in his career when the time is ripe and it&rsquo;s time
+    <content type="html"><![CDATA[<p>TL;DR <em>Writing micro compiler in OCaml</em></p>
+
+<p>At one point or another every single software developer in the world comes to a realization in his career when the time is ripe and it&rsquo;s time
 to write your own super cool programming language.</p>
 
 <p><img src="http://i.imgur.com/KSiXBCN.png" alt="Lemon Loli" /></p>
