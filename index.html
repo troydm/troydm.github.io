@@ -9,8 +9,8 @@
   <meta name="author" content="Dmitry Geurkov">
 
   
-  <meta name="description" content="Any sufficiently advanced technology is indistinguishable from magic or so they say. Today we are going to lift some shadows from
-the very basic &hellip;">
+  <meta name="description" content="Previously we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
+Now let&rsquo;s talk about automatic memory &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -68,6 +68,52 @@ the very basic &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/09/06/of-all-the-garbage-in-the-world/">Of All the Garbage in the World</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-09-06T00:01:19+04:00" pubdate data-updated="true">Sep 6<span>th</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><a href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Previously</a> we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
+Now let&rsquo;s talk about automatic memory allocation, more specifically about <a href="https://en.wikipedia.org/wiki/Garbage_collection_%28computer_science%29">Garbage Collection</a>.
+Most if not all modern Programming Languages contain a mechanism that handles allocation of memory automatically at precisely the moment application needs it and deallocation of that
+memory at the moment it&rsquo;s not needed anymore. However determining when memory region (or object) is safe to deallocate is not an easy feat as we need to somehow determine if the region is needed or not.
+And here is where <em>Garbage Collection</em> comes into a play. Simply speaking <em>Garbage Collection</em> is an algorithm that checks entire memory of an application for regions that aren&rsquo;t referenced anywhere inside application by other memory regions and deallocates these regions because they aren&rsquo;t needed anymore. <em>Garbage Collection</em> was invented by <a href="https://en.wikipedia.org/wiki/John_McCarthy_%28computer_scientist%29">John McCarthy</a> back in 1959 for <a href="https://en.wikipedia.org/wiki/Lisp_%28programming_language%29">Lisp</a> and is still one of the hottest evolving topics in Computer Science nowadays, especially with <a href="https://en.wikipedia.org/wiki/Java_%28software_platform%29">Java</a>&rsquo;s GC becoming more famous with tons of blows and whistles which can be tuned to practically any application memory usage scenario. There are also alternative models to automatic memory handling such as <a href="https://en.wikipedia.org/wiki/NewLISP">newLisp</a>&rsquo;s ORO, <a href="https://en.wikipedia.org/wiki/Rust_%28programming_language%29">Rust</a>&rsquo;s ownership based life cycle management and <a href="https://en.wikipedia.org/wiki/Objective-C">Objective-C</a>&rsquo;s ARC but we won&rsquo;t be talking about those. The cost of checking entire memory region is not a cheap one so people realized ways to make it more reasonable and thus nowadays we have various types of <em>Garbage Collection</em> algorithms. There are tracing garbage collectors and reference counting ones, copying (moving) and non-copying (non-moving) ones, incremental and non-incremental, generational, concurrent, parallel and real-time ones. To learn more about all those types of <em>Garbage Collectors</em> I suggest you try reading <a href="http://www.amazon.com/Garbage-Collection-Handbook-Management-Algorithms/dp/1420082795/">The Garbage Collection Handbook</a> which is a fundamental must read handbook for all those interested in the topic. But for rest of you lazy bunch let&rsquo;s start collecting all the garbage in the world by writing one garbage collector ourselves. Let&rsquo;s write a single threaded tracing tri-color (actually 4-color, I&rsquo;ll explain later why) non-copying incremental n-generational (n-generational meaning that we can configure any number of generations dynamically on startup, but our implementation will have limitation of maximum 64 generations) <em>Garbage Collector</em> in <em>C</em>. We won&rsquo;t tackle multithreading, concurrency and parallel garbage collection for sake of simplicity as those are more complex to implement but maybe I&rsquo;ll do another blog post about them later this year. Our simple garbage collector will be single threaded only, meaning it will correctly work only in applications that don&rsquo;t use multiple threads or somehow allocate memory in parallel. This kind of <em>Garbage Collector</em> is sufficient for languages that aren&rsquo;t natively multithreaded, such as <a href="https://en.wikipedia.org/wiki/Node.js">Node.js</a> and <a href="https://en.wikipedia.org/wiki/Pharo">Pharo</a>, so if you are planning to write such language yourself this might be a useful exercise for you. For those of you impatient ones there is a <a href="https://github.com/troydm/simplegc/">simplegc</a> repo with all the source code to study. So let&rsquo;s get started.
+<img src="http://i.imgur.com/v5Czgfd.png" alt="Space Dandy" /></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/09/06/of-all-the-garbage-in-the-world/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -476,11 +522,16 @@ So if you don&rsquo;t have one then you are behind of times</p>
   <p>
   I&#8217;m software developer, functional programming enthusiast 
   and open source evangelist from <a href="https://en.wikipedia.org/wiki/Tbilisi">Tbilisi, Georgia</a>
+  living in <a href="https://en.wikipedia.org/wiki/Kiev">Kiev, Ukraine</a>
   </p>
 </section>
 <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/09/06/of-all-the-garbage-in-the-world/">Of All The Garbage in The World</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Lifting Shadows off a Memory Allocation</a>
@@ -496,10 +547,6 @@ So if you don&rsquo;t have one then you are behind of times</p>
     
       <li class="post">
         <a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/01/26/making-30-years-old-pascal-code-run-again/">Making 30 years old Pascal code run again</a>
       </li>
     
   </ul>

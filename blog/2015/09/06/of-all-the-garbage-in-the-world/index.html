@@ -1,0 +1,1400 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Of All The Garbage in The World - Troydm's Blog</title>
+  <meta name="author" content="Dmitry Geurkov">
+
+  
+  <meta name="description" content="Previously we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
+Now let&rsquo;s talk about automatic memory &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Troydm's Blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Troydm's Blog</a></h1>
+  
+    <h2>A personal blog about software development</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://ddg.gg/" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:troydm.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="https://github.com/troydm/">Github</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Of All the Garbage in the World</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-09-06T00:01:19+04:00" pubdate data-updated="true">Sep 6<span>th</span>, 2015</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><a href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Previously</a> we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
+Now let&rsquo;s talk about automatic memory allocation, more specifically about <a href="https://en.wikipedia.org/wiki/Garbage_collection_%28computer_science%29">Garbage Collection</a>.
+Most if not all modern Programming Languages contain a mechanism that handles allocation of memory automatically at precisely the moment application needs it and deallocation of that
+memory at the moment it&rsquo;s not needed anymore. However determining when memory region (or object) is safe to deallocate is not an easy feat as we need to somehow determine if the region is needed or not.
+And here is where <em>Garbage Collection</em> comes into a play. Simply speaking <em>Garbage Collection</em> is an algorithm that checks entire memory of an application for regions that aren&rsquo;t referenced anywhere inside application by other memory regions and deallocates these regions because they aren&rsquo;t needed anymore. <em>Garbage Collection</em> was invented by <a href="https://en.wikipedia.org/wiki/John_McCarthy_%28computer_scientist%29">John McCarthy</a> back in 1959 for <a href="https://en.wikipedia.org/wiki/Lisp_%28programming_language%29">Lisp</a> and is still one of the hottest evolving topics in Computer Science nowadays, especially with <a href="https://en.wikipedia.org/wiki/Java_%28software_platform%29">Java</a>&rsquo;s GC becoming more famous with tons of blows and whistles which can be tuned to practically any application memory usage scenario. There are also alternative models to automatic memory handling such as <a href="https://en.wikipedia.org/wiki/NewLISP">newLisp</a>&rsquo;s ORO, <a href="https://en.wikipedia.org/wiki/Rust_%28programming_language%29">Rust</a>&rsquo;s ownership based life cycle management and <a href="https://en.wikipedia.org/wiki/Objective-C">Objective-C</a>&rsquo;s ARC but we won&rsquo;t be talking about those. The cost of checking entire memory region is not a cheap one so people realized ways to make it more reasonable and thus nowadays we have various types of <em>Garbage Collection</em> algorithms. There are tracing garbage collectors and reference counting ones, copying (moving) and non-copying (non-moving) ones, incremental and non-incremental, generational, concurrent, parallel and real-time ones. To learn more about all those types of <em>Garbage Collectors</em> I suggest you try reading <a href="http://www.amazon.com/Garbage-Collection-Handbook-Management-Algorithms/dp/1420082795/">The Garbage Collection Handbook</a> which is a fundamental must read handbook for all those interested in the topic. But for rest of you lazy bunch let&rsquo;s start collecting all the garbage in the world by writing one garbage collector ourselves. Let&rsquo;s write a single threaded tracing tri-color (actually 4-color, I&rsquo;ll explain later why) non-copying incremental n-generational (n-generational meaning that we can configure any number of generations dynamically on startup, but our implementation will have limitation of maximum 64 generations) <em>Garbage Collector</em> in <em>C</em>. We won&rsquo;t tackle multithreading, concurrency and parallel garbage collection for sake of simplicity as those are more complex to implement but maybe I&rsquo;ll do another blog post about them later this year. Our simple garbage collector will be single threaded only, meaning it will correctly work only in applications that don&rsquo;t use multiple threads or somehow allocate memory in parallel. This kind of <em>Garbage Collector</em> is sufficient for languages that aren&rsquo;t natively multithreaded, such as <a href="https://en.wikipedia.org/wiki/Node.js">Node.js</a> and <a href="https://en.wikipedia.org/wiki/Pharo">Pharo</a>, so if you are planning to write such language yourself this might be a useful exercise for you. For those of you impatient ones there is a <a href="https://github.com/troydm/simplegc/">simplegc</a> repo with all the source code to study. So let&rsquo;s get started.
+<img src="http://i.imgur.com/v5Czgfd.png" alt="Space Dandy" /></p>
+
+<!--more-->
+
+
+<p>We need a way to represent our memory regions so we&rsquo;ll go for the most obvious object oriented representation, meaning we&rsquo;ll just write a garbage collector for object-oriented programming language of ours.
+Each object will be part of doubly linked list so we could trace it and hence it will contain a pointer to a pointer of a previous object pointing to it called <strong>gc_prev</strong> and a pointer to the next object called <strong>gc_next</strong>.
+Each object will have a pointer to a <strong>class</strong> description which we&rsquo;ll talk about later.
+Each object will also have 32-bit unsigned integer called <strong>gc_mark</strong> which will serve three purposes: to mark object&rsquo;s color, gc generation and count root references (I&rsquo;ll explain those later). Each object might also reference other objects for example we might have fields inside object which could contain other objects so hence we need <strong>refs_count</strong> variable to count number of fields object has.
+Since each object will be of a class we also need to represent the class itself. It will contain function pointers that will be used during garbage collection. One of them is the most obvious function pointer which is a <strong>gc_finalize</strong> function. This function will be called precisely before the moment of freeing memory region which is not used anymore or simply speaking just before the object will be deleted by the <em>Garbage Collector</em>. <strong>gc_mark_black</strong> function pointer will point to a function used to mark object from <em>grey</em> to <em>black</em> and mark all objects it&rsquo;s referring (or contains) as <em>grey</em> for further processing. <strong>gc_contains</strong> will be a function used to check if an object is referenced (or contained) by another object.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">struct</span> <span class="n">gc_object_class_t</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// gc object</span>
+</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="n">gc_object_t</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">gc_object_t</span><span class="o">**</span> <span class="n">gc_prev</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">gc_object_t</span><span class="o">*</span> <span class="n">gc_next</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">uint32_t</span> <span class="n">gc_mark</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">gc_object_class_t</span><span class="o">*</span> <span class="n">class</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">uint16_t</span> <span class="n">refs_count</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span> <span class="n">gc_object</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// gc object class</span>
+</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="n">gc_object_class_t</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">gc_mark_black</span><span class="p">)(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">);</span> <span class="c1">// this marks  object from grey to black</span>
+</span><span class='line'>    <span class="n">bool</span> <span class="p">(</span><span class="o">*</span><span class="n">gc_contains</span><span class="p">)(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">,</span> <span class="n">gc_object</span><span class="o">*</span> <span class="n">ref</span><span class="p">);</span> <span class="c1">// this checks if object contains reference object</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">gc_finalize</span><span class="p">)(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">);</span> <span class="c1">// this is called before object is deallocated</span>
+</span><span class='line'><span class="p">}</span> <span class="n">gc_object_class</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s talk about <strong>gc_mark</strong>. As I&rsquo;ve said earlier it&rsquo;ll serve three purposes for our object: root reference count, object&rsquo;s color marking, and gc generation.
+We&rsquo;ll use first 24 bits for root reference counting, next 2 bits will be used for color (as we&rsquo;ll have 4 possible colors we need 2 bits since 2<sup>2</sup> is 4) and remaining 6 bits will be used for gc generation (meaning we can&rsquo;t have more than 64 generations since 2<sup>6</sup> is 64, but that is enough for any use case).</p>
+
+<p><canvas id="gc_mark" width="400" height="75"></canvas></p>
+
+<script>
+function drawRect(ctx,text,x,y,w,h){
+    ctx.fillRect(x,y,w,h);
+    ctx.moveTo(x,y);
+    ctx.lineTo(x,y+h);
+    ctx.stroke();
+    ctx.moveTo(x,y);
+    ctx.lineTo(x+w,y);
+    ctx.stroke();
+    ctx.moveTo(x+w,y);
+    ctx.lineTo(x+w,y+h);
+    ctx.stroke();
+    ctx.moveTo(x,y+h);
+    ctx.lineTo(x+w,y+h);
+    ctx.stroke();
+    var fs = ctx.fillStyle;
+    ctx.fillStyle = "#000000";
+    var tl = 16*text.length;
+    ctx.fillText(text,x+(w/2)-(tl/4)+5,y+(h/2)+4);
+    ctx.fillStyle = fs;
+}
+var c = document.getElementById("gc_mark");
+var ctx = c.getContext("2d");
+ctx.font="normal 12pt Sans";
+ctx.fillStyle = "#000000";
+ctx.fillText("gc_mark (32-bit unsigned integer)",5,15);
+ctx.fillStyle = "#F8D7BB";
+ctx.strokeStyle = "#000000";
+drawRect(ctx,"24 bits",0,20,300,35);
+drawRect(ctx," 2 bits",300,20,50,35);
+drawRect(ctx," 6 bits",350,20,50,35);
+ctx.fillStyle = "#000000";
+ctx.fillText("root reference count",95,70);
+ctx.fillText("color",310,70);
+ctx.fillText("gen",365,70);
+</script>
+
+
+<p>Let&rsquo;s define some useful macros to work with <strong>gc_mark</strong>. Most of them are related to bitwise magic so I won&rsquo;t explain them in details but instead leave that as self-study for you.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// gc mark</span>
+</span><span class='line'><span class="cp">#define gc_set_mark(o,r,gi) o-&gt;gc_mark = (r &lt;&lt; 8) | gi</span>
+</span><span class='line'><span class="c1">// generation part</span>
+</span><span class='line'><span class="cp">#define gc_gen_part(o) (o-&gt;gc_mark &amp; 0xFF)</span>
+</span><span class='line'><span class="cp">#define gc_gen_num(o) (o-&gt;gc_mark &amp; 0x3F)</span>
+</span><span class='line'><span class="cp">#define gc_gen_set(o,g) gc_set_mark(o,gc_root_ref_count(o), gc_color_bit(o) | (g &amp; 0x3F))</span>
+</span><span class='line'><span class="c1">// color bits</span>
+</span><span class='line'><span class="cp">#define gc_color_bit(o) (o-&gt;gc_mark &amp; 0xC0)</span>
+</span><span class='line'><span class="cp">#define gc_color(o) (gc_gen_part(o) &gt;&gt; 6)</span>
+</span><span class='line'><span class="cp">#define gc_color_is_white(o) (gc_color_bit(o) == 0x00)</span>
+</span><span class='line'><span class="cp">#define gc_color_is_grey(o) (gc_color_bit(o) == 0x40)</span>
+</span><span class='line'><span class="cp">#define gc_color_is_black(o) (gc_color_bit(o) == 0x80)</span>
+</span><span class='line'><span class="cp">#define gc_color_is_silver(o) (gc_color_bit(o) == 0xC0)</span>
+</span><span class='line'><span class="cp">#define gc_color_is_silver_or_white(o) (gc_color_is_silver(o) || gc_color_is_white(o))</span>
+</span><span class='line'><span class="cp">#define gc_mark_white(o) o-&gt;gc_mark &amp;= 0xFFFFFF3F</span>
+</span><span class='line'><span class="cp">#define gc_mark_grey(o) gc_mark_white(o); o-&gt;gc_mark |= 0x40</span>
+</span><span class='line'><span class="cp">#define gc_mark_black(o) gc_mark_white(o); o-&gt;gc_mark |= 0x80</span>
+</span><span class='line'><span class="cp">#define gc_mark_silver(o) o-&gt;gc_mark |= 0xC0</span>
+</span><span class='line'><span class="c1">// root reference count</span>
+</span><span class='line'><span class="cp">#define gc_root_ref_count(o) (o-&gt;gc_mark &gt;&gt; 8)</span>
+</span><span class='line'><span class="cp">#define gc_inc_root_ref_count(o) gc_set_mark(o,(gc_root_ref_count(o)+1),gc_gen_part(o))</span>
+</span><span class='line'><span class="cp">#define gc_dec_root_ref_count(o) gc_set_mark(o,(gc_root_ref_count(o)-1),gc_gen_part(o))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s describe configuration for our garbage collector. First thing first we need to limit duration
+of our garbage collection cycle since we don&rsquo;t want it to be too long and are writing an incremental garbage
+collector after all. For this we&rsquo;ll have <strong>max_pause</strong> configuration property which will define maximum amount of
+nanoseconds gc cycle can run. Also since we need to somehow check if our cycle is exceeding it&rsquo;s pause limit or not
+we just can&rsquo;t do it after every object we check during gc cycle, thus we need <strong>pause_threshold</strong> which is number of
+objects checked after which gc pause check occurs. Next we define number of generations our garbage collector will have
+using <strong>gens_count</strong> and provide generation configurations array using <strong>gens</strong>.
+Each generation configuration will have <strong>refresh_interval</strong> which is number of nanoseconds passed after last full gc cycle
+after which entire generation of objects should be rechecked. Now we need to clarify what is full gc cycle.
+Full gc cycle is garbage collection cycle that is not interrupted after hitting max pause threshold.
+Last thing our generation configuration has is <strong>promotion_interval</strong> which is number of nanoseconds passed after last full gc cycle
+after which our objects in generation are promoted to higher generation. This configuration property is not relevant for the last generation since there is no next generation to promote to.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// gc config</span>
+</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">uint64_t</span> <span class="n">max_pause</span><span class="p">;</span> <span class="c1">// gc max pause in nanoseconds</span>
+</span><span class='line'>    <span class="kt">uint32_t</span> <span class="n">pause_threshold</span><span class="p">;</span> <span class="c1">// number of objects checked after which gc pause check should occur</span>
+</span><span class='line'>    <span class="kt">uint8_t</span> <span class="n">gens_count</span><span class="p">;</span> <span class="c1">// number of generations</span>
+</span><span class='line'>    <span class="n">gc_gen_config</span><span class="o">*</span> <span class="n">gens</span><span class="p">;</span> <span class="c1">// generation configs array</span>
+</span><span class='line'><span class="p">}</span> <span class="n">gc_config</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// generation config</span>
+</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">uint64_t</span> <span class="n">refresh_interval</span><span class="p">;</span> <span class="c1">// generation refresh interval in nanoseconds</span>
+</span><span class='line'>    <span class="kt">uint64_t</span> <span class="n">promotion_interval</span><span class="p">;</span> <span class="c1">// generation promotion interval in nanoseconds</span>
+</span><span class='line'><span class="p">}</span> <span class="n">gc_gen_config</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s talk about why we need 4 colors for describing the state of the object in relevance to current garbage collection cycle.
+In traditional tri-color garbage collector objects can be <em>white</em>, <em>grey</em> and <em>black</em>. Newly created objects are marked as <em>white</em>.
+After object is identified to have a root reference it&rsquo;s color is changed from <em>white</em> to <em>grey</em>. Next all <em>grey</em> objects are checked for
+references of other objects that they contain. For each contained reference if reference is <em>white</em> it&rsquo;s marked as <em>grey</em> for future checking after which the container object is marked as <em>black</em>. All remaining <em>grey</em> objects are subsequently checked for references of objects they contain. After this checks we have only <em>black</em> and <em>white</em> objects. Objects marked as <em>black</em> are reachable from the root and hence don&rsquo;t need to be garbage collected. Remaining white objects on the other hand are considered garbage and freed in the end. You can read about this in more detail <a href="https://en.wikipedia.org/wiki/Tracing_garbage_collection#Tri-color_marking">here</a>.</p>
+
+<p>Traditional tri-color algorithm doesn&rsquo;t has a notion of generation in mind because checking objects only in some specific limited generation won&rsquo;t be correct for determining if objects are garbage or not as some of those objects might have references from other generations. Let&rsquo;s consider that you have a generation of objects and you suddenly want to recheck them all. What you will probably do is mark all objects as <em>white</em> again and then mark objects that have root references as <em>grey</em> and go from there. However the problem with this approach is that in the end we might have white objects that don&rsquo;t have direct references in generation they are part of but have indirect reference from root objects in another generation. This is why we need 4 colors. We will treat those objects as <em>silver</em> and won&rsquo;t consider them as <em>white</em> yet. For each such object we&rsquo;ll check all <em>black</em> objects in all generations for possible references. If such reference will be found we&rsquo;ll mark that object as <em>grey</em> and will promote it to the generation that has reference to it. This might introduce some generation bouncing but since all live objects in all generations are subsequently promoted after some period of time to last generation this won&rsquo;t be a problem.</p>
+
+<p>Since we need to be incremental during our garbage collection cycle for all white objects that are considered garbage we&rsquo;ll have a separate color that we&rsquo;ll call <em>transparent</em>, but we won&rsquo;t need additional bit in <strong>gc_mark</strong> to identify objects with such color. This kind objects won&rsquo;t be marked directly but instead will be part of <strong>transparent</strong> list that will be used during last step in our incremental garbage collection cycle to call <strong>gc_finalize</strong> function for each object in that list and <strong>free</strong> it from memory. This is needed because <strong>gc_finalize</strong> and <strong>free</strong> calls can be time costly operations hence we need to delay them until our gc cycle is fully over so they could be executed in the remaining cycle time. This way we can have a nearly timely precise incremental garbage collector that won&rsquo;t ever exceed our predefined <strong>max_pause</strong> time.</p>
+
+<p>Since we are going to count time using nanoseconds we need a way to measure nanoseconds passed between execution of arbitrary code.
+For this we&rsquo;ll use Linux <em>syscall</em> <strong>clock_gettime</strong>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// get current time in nano seconds</span>
+</span><span class='line'><span class="kt">uint64_t</span> <span class="nf">get_nanotime</span><span class="p">(){</span>
+</span><span class='line'>    <span class="k">struct</span> <span class="n">timespec</span> <span class="n">t</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">clock_gettime</span><span class="p">(</span><span class="n">CLOCK_MONOTONIC</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">t</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="p">(((</span><span class="kt">uint64_t</span><span class="p">)</span><span class="n">t</span><span class="p">.</span><span class="n">tv_sec</span><span class="p">)</span><span class="o">*</span><span class="mi">1000000000</span><span class="p">)</span> <span class="o">+</span> <span class="p">((</span><span class="kt">uint64_t</span><span class="p">)</span><span class="n">t</span><span class="p">.</span><span class="n">tv_nsec</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s define some global constants and variables for our garbage collector. Note how we are going to have
+single double linked lists for each gc color except <em>black</em>.
+Each generation will have it&rsquo;s own <em>black</em> objects list and hence we&rsquo;ll need an array of doubly linked objects lists.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#define WHITE 0</span>
+</span><span class='line'><span class="cp">#define GREY  1</span>
+</span><span class='line'><span class="cp">#define BLACK 2</span>
+</span><span class='line'><span class="cp">#define SILVER 3</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// gc configuration</span>
+</span><span class='line'><span class="k">static</span> <span class="n">gc_config</span> <span class="n">conf</span><span class="p">;</span>
+</span><span class='line'><span class="c1">// gc list variables</span>
+</span><span class='line'><span class="k">static</span> <span class="n">gc_object</span><span class="o">*</span> <span class="n">transparent</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">gc_object</span><span class="o">*</span> <span class="n">white</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">gc_object</span><span class="o">*</span> <span class="n">silver</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">gc_object</span><span class="o">*</span> <span class="n">grey</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'><span class="k">static</span> <span class="n">gc_object</span><span class="o">**</span> <span class="n">black</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally we can start writing some functions. Let&rsquo;s start with Garbage Collector initialization function first.
+This will be called on startup and only once. It checks if generation count is correct and next thing is it just copies over configuration object including
+the contained generation configurations.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// initialize garbage collector</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">gc_init</span><span class="p">(</span><span class="n">gc_config</span><span class="o">*</span> <span class="n">config</span><span class="p">){</span>
+</span><span class='line'>    <span class="c1">// number of generations can&#39;t be more than 64 or equal to 0</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">config</span><span class="o">-&gt;</span><span class="n">gens_count</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">config</span><span class="o">-&gt;</span><span class="n">gens_count</span> <span class="o">&gt;</span> <span class="mi">64</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">errno</span> <span class="o">=</span> <span class="n">EINVAL</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">return</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="c1">// copy config</span>
+</span><span class='line'>    <span class="n">conf</span> <span class="o">=</span> <span class="o">*</span><span class="n">config</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">gens</span> <span class="o">=</span> <span class="p">(</span><span class="n">gc_gen_config</span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">gc_gen_config</span><span class="p">)</span> <span class="o">*</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens_count</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">black</span> <span class="o">=</span> <span class="p">(</span><span class="n">gc_object</span><span class="o">**</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span><span class="p">)</span> <span class="o">*</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens_count</span><span class="p">);</span>
+</span><span class='line'>    <span class="c1">// foreach generation config</span>
+</span><span class='line'>    <span class="k">for</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens_count</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">){</span>
+</span><span class='line'>        <span class="c1">// copy config and initialize generation</span>
+</span><span class='line'>        <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">-&gt;</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</span><span class='line'>        <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">refresh_time</span> <span class="o">=</span> <span class="n">get_nanotime</span><span class="p">();</span>
+</span><span class='line'>        <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">promotion_time</span> <span class="o">=</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">refresh_time</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">black</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We also need a function to destroy our garbage collector when it&rsquo;s not needed anymore.
+This needs to free up all doubly linked lists as those can be considered part of garbage collector.
+Note how we call <strong>gc_finalize</strong> function before freeing up object.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// completely free entire list finalizing all objects inside</span>
+</span><span class='line'><span class="kr">inline</span> <span class="kt">void</span> <span class="nf">gc_free_list</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">list</span><span class="p">){</span>
+</span><span class='line'>    <span class="k">while</span><span class="p">(</span><span class="n">list</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">list</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">list</span> <span class="o">=</span> <span class="n">list</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">(</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">class</span><span class="o">-&gt;</span><span class="n">gc_finalize</span><span class="p">)(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">free</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// deinitialize garbage collector</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">gc_destroy</span><span class="p">(){</span>
+</span><span class='line'>    <span class="c1">// free all objects from all lists</span>
+</span><span class='line'>    <span class="n">gc_free_list</span><span class="p">(</span><span class="n">transparent</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">gc_free_list</span><span class="p">(</span><span class="n">white</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">gc_free_list</span><span class="p">(</span><span class="n">silver</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">gc_free_list</span><span class="p">(</span><span class="n">grey</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">for</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens_count</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">gc_free_list</span><span class="p">(</span><span class="n">black</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+</span><span class='line'>    <span class="c1">// remove black list and generation configs</span>
+</span><span class='line'>    <span class="n">free</span><span class="p">(</span><span class="n">black</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">free</span><span class="p">(</span><span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s define some helper functions for working with doubly linked lists.
+We&rsquo;ll use those to add, remove, and move objects from one list to another.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// add object to list</span>
+</span><span class='line'><span class="kr">inline</span> <span class="kt">void</span> <span class="nf">gc_list_add</span><span class="p">(</span><span class="n">gc_object</span><span class="o">**</span> <span class="n">list</span><span class="p">,</span> <span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">){</span>
+</span><span class='line'>    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span> <span class="o">=</span> <span class="o">*</span><span class="n">list</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span> <span class="o">!=</span> <span class="n">null</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="o">-&gt;</span><span class="n">gc_prev</span> <span class="o">=</span> <span class="o">&amp;</span><span class="p">(</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_prev</span> <span class="o">=</span> <span class="n">list</span><span class="p">;</span>
+</span><span class='line'>    <span class="o">*</span><span class="n">list</span> <span class="o">=</span> <span class="n">obj</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// remove object from current list</span>
+</span><span class='line'><span class="kr">inline</span> <span class="kt">void</span> <span class="nf">gc_list_remove</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">){</span>
+</span><span class='line'>    <span class="o">*</span><span class="p">(</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_prev</span><span class="p">)</span> <span class="o">=</span> <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span> <span class="o">!=</span> <span class="n">null</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="o">-&gt;</span><span class="n">gc_prev</span> <span class="o">=</span> <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_prev</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// move object to list</span>
+</span><span class='line'><span class="kr">inline</span> <span class="kt">void</span> <span class="nf">gc_list_move</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">,</span> <span class="n">gc_object</span><span class="o">**</span> <span class="n">list</span><span class="p">){</span>
+</span><span class='line'>    <span class="n">gc_list_remove</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">gc_list_add</span><span class="p">(</span><span class="n">list</span><span class="p">,</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// move all objects from list to list</span>
+</span><span class='line'><span class="kr">inline</span> <span class="kt">void</span> <span class="nf">gc_list_move_all</span><span class="p">(</span><span class="n">gc_object</span><span class="o">**</span> <span class="n">from</span><span class="p">,</span> <span class="n">gc_object</span><span class="o">**</span> <span class="n">to</span><span class="p">){</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="o">*</span><span class="n">to</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span> <span class="o">=</span> <span class="o">*</span><span class="n">from</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">while</span><span class="p">(</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span> <span class="o">!=</span> <span class="n">null</span><span class="p">)</span>
+</span><span class='line'>            <span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span> <span class="o">=</span> <span class="o">*</span><span class="n">to</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">(</span><span class="o">*</span><span class="n">to</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">gc_prev</span> <span class="o">=</span> <span class="o">&amp;</span><span class="p">(</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="o">*</span><span class="n">to</span> <span class="o">=</span> <span class="o">*</span><span class="n">from</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">(</span><span class="o">*</span><span class="n">to</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">gc_prev</span> <span class="o">=</span> <span class="n">to</span><span class="p">;</span>
+</span><span class='line'>    <span class="o">*</span><span class="n">from</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now in order to determine if object is reachable or not we&rsquo;ll just use root reference counting instead of going over the stack and marking objects each time.
+This might be considered more expensive as each time we set a reference to some object on the stack we need to increment it&rsquo;s root reference count.
+And every time we pop a stack frame or modify a reference on the stack we need to decrement root reference count. Doing this many times is expensive indeed however from my point of view this approach is more faster in long term compared to scanning the stack each time during garbage collection. But if you really want it our simple garbage collector can be easily modified to use the scanning approach if needed.</p>
+
+<p>As you can see from code when we increment root reference count we also check if object is white and mark it as grey for future check by Garbage Collector.
+We could omit this step, however in doing so we would require to go through entire white objects set and check their root reference count each time during Garbage Collector cycle. As you can see there are no additional steps during decrement of root reference count, and that is because we don&rsquo;t need to do anything since when root reference count becomes 0 our object will still be refreshed during generation refresh phase and during it the root reference count will be checked anyway.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// add gc root</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">gc_add_root</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">){</span>
+</span><span class='line'>    <span class="c1">// increase root ref count</span>
+</span><span class='line'>    <span class="n">gc_inc_root_ref_count</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>    <span class="c1">// mark object as grey if it&#39;s white or silver</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">gc_color_is_silver_or_white</span><span class="p">(</span><span class="n">obj</span><span class="p">)){</span>
+</span><span class='line'>        <span class="n">gc_list_move</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="o">&amp;</span><span class="n">grey</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">gc_mark_grey</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// remove gc root</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">gc_remove_root</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">){</span>
+</span><span class='line'>    <span class="c1">// decrease root ref count</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">gc_root_ref_count</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">gc_dec_root_ref_count</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next thing we need to do is to actually allocate the object itself and initialize it&rsquo;s <strong>gc_mark</strong>.
+We also need to add it to white objects list as all new objects should be added to white list.
+Without it we won&rsquo;t be able to track allocated objects. Look at how we also initialize references to <em>null</em>
+based on how much references an object could contain. This is specified using <strong>refs_count</strong> argument to the function.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// allocate gc_object</span>
+</span><span class='line'><span class="n">gc_object</span><span class="o">*</span> <span class="nf">gc_alloc</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">refs_count</span><span class="p">){</span>
+</span><span class='line'>    <span class="c1">// allocate new white object in generation 0 with 0 root ref count</span>
+</span><span class='line'>    <span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span> <span class="o">=</span> <span class="p">(</span><span class="n">gc_object</span><span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">gc_object</span><span class="p">)</span> <span class="o">+</span> <span class="n">refs_count</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span><span class="p">));</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// initialize references</span>
+</span><span class='line'>    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">refs_count</span> <span class="o">=</span> <span class="n">refs_count</span><span class="p">;</span> <span class="c1">// number of references this object might contain</span>
+</span><span class='line'>    <span class="n">gc_object</span><span class="o">**</span> <span class="n">refs</span> <span class="o">=</span> <span class="p">(</span><span class="n">gc_object</span><span class="o">**</span><span class="p">)(</span><span class="n">obj</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// start of refs array</span>
+</span><span class='line'>    <span class="k">for</span><span class="p">(</span><span class="kt">uint16_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">refs_count</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
+</span><span class='line'>        <span class="n">refs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">null</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// set gc mark</span>
+</span><span class='line'>    <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_mark</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// initial gc_mark value (0 generation white color)</span>
+</span><span class='line'>    <span class="c1">// add object to white list</span>
+</span><span class='line'>    <span class="n">gc_list_add</span><span class="p">(</span><span class="o">&amp;</span><span class="n">white</span><span class="p">,</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">obj</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since our object could contain references we need a way to be able to modify those references.
+Since we are introducing mutation we need to be able to revert the color of black object back to grey in order
+to be able to recheck it during gc cycle. This operation is not expensive and is executed only once during mutation
+between gc cycles if mutation of the object occurs thus we don&rsquo;t get any performance penalties by doing so each time on
+reference modification.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// set object reference to another object</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">gc_set_ref</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">,</span> <span class="kt">uint16_t</span> <span class="n">ref_index</span><span class="p">,</span> <span class="n">gc_object</span><span class="o">*</span> <span class="n">ref</span><span class="p">){</span>
+</span><span class='line'>    <span class="n">gc_object</span><span class="o">**</span> <span class="n">refs</span> <span class="o">=</span> <span class="p">(</span><span class="n">gc_object</span><span class="o">**</span><span class="p">)(</span><span class="n">obj</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// start of refs array</span>
+</span><span class='line'>    <span class="n">refs</span><span class="p">[</span><span class="n">ref_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">ref</span><span class="p">;</span>
+</span><span class='line'>    <span class="c1">// if object is black because it mutated we need to mark it grey again</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">gc_color_is_black</span><span class="p">(</span><span class="n">obj</span><span class="p">)){</span>
+</span><span class='line'>        <span class="n">gc_list_move</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="o">&amp;</span><span class="n">grey</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">gc_mark_grey</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s start writing <strong>gc</strong> function. First we need to initialize cycle counters which we&rsquo;ll be used during our gc cycle. I&rsquo;ve added
+this variables to <strong>gc_config</strong> <em>struct</em> just for the sake of simplicity.
+First thing we are going to do during our gc cycle is to free all transparent objects that might have been left over from the previous gc cycle. Before freeing each object we call <strong>gc_finalize</strong> function from it&rsquo;s <em>class</em>. Note however that since we are writing an incremental garbage collector we need to be able to end the cycle prematurely if it takes too much time. To do so we&rsquo;ll be using <strong>gc_cycle_check</strong> <em>macro</em>. In order for <em>gc_cycle_check</em> to determine if the check for threshold should occur or not we increment <strong>cycle_threshold</strong> counter.
+During <strong>gc_cycle_check</strong> we just check if <strong>cycle_threshold</strong> is bigger than configured <strong>pause_threshold</strong> and if it is we just check the amount of passed time in nano seconds since the start of the gc cycle. If the time passed exceeds <strong>max_pause</strong> configuration value we just call <strong>gc_cycle_end</strong> function and end cycle prematurely.
+We&rsquo;ll rely on <strong>gc_cycle_check</strong> <em>macro</em> heavily through our entire gc cycle.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#define gc_cycle_check \</span>
+</span><span class='line'><span class="cp">if(conf.cycle_threshold &gt;= conf.pause_threshold){ \</span>
+</span><span class='line'><span class="cp">    if((get_nanotime() - conf.cycle_time) &gt;= conf.max_pause){ \</span>
+</span><span class='line'><span class="cp">        return gc_cycle_end(); \</span>
+</span><span class='line'><span class="cp">    } \</span>
+</span><span class='line'><span class="cp">    conf.cycle_objects += conf.cycle_threshold; \</span>
+</span><span class='line'><span class="cp">    conf.cycle_threshold = 0; \</span>
+</span><span class='line'><span class="cp">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// end gc cycle</span>
+</span><span class='line'><span class="k">static</span> <span class="kr">inline</span> <span class="kt">uint64_t</span> <span class="nf">gc_cycle_end</span><span class="p">(){</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">cycle_objects</span> <span class="o">+=</span> <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">cycle_duration</span> <span class="o">=</span> <span class="n">get_nanotime</span><span class="p">()</span> <span class="o">-</span> <span class="n">conf</span><span class="p">.</span><span class="n">cycle_time</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">conf</span><span class="p">.</span><span class="n">cycle_duration</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// start gc cycle</span>
+</span><span class='line'><span class="n">conf</span><span class="p">.</span><span class="n">cycle_time</span> <span class="o">=</span> <span class="n">get_nanotime</span><span class="p">();</span>
+</span><span class='line'><span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="n">conf</span><span class="p">.</span><span class="n">cycle_objects</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="n">conf</span><span class="p">.</span><span class="n">cycle_collected</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="n">conf</span><span class="p">.</span><span class="n">cycle_full</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// transparent cleanup phase before cycle</span>
+</span><span class='line'><span class="k">while</span><span class="p">(</span><span class="n">transparent</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>    <span class="p">(</span><span class="n">transparent</span><span class="o">-&gt;</span><span class="n">class</span><span class="o">-&gt;</span><span class="n">gc_finalize</span><span class="p">)(</span><span class="n">transparent</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">transparent</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">transparent</span> <span class="o">=</span> <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">free</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">11</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">cycle_collected</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>    <span class="c1">// check pause threshold</span>
+</span><span class='line'>    <span class="n">gc_cycle_check</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After cleaning up transparent list next thing what we are going to do is promote generations that need promotion and refresh those that need refreshment.
+Now this might sound something complex but it&rsquo;s pretty much straight forward. We just track time of last promotion and refreshment for each generation in <strong>promotion_time</strong> and
+<strong>refresh_time</strong> variables and compare them with configuration intervals called <strong>promotiona_interval</strong> and <strong>refresh_interval</strong> configured individually for each generation.
+Note how we skip promotion of the last generation as there is no generation to promote to. During promotion what we are doing is just incrementing generation setting and moving
+object from one generation black list to another. Note that while doing that we also check gc pause threshold using <strong>gc_cylce_check</strong> <em>macro</em>. During refresh we are checking root
+reference count and based on that move objects either to <em>grey</em> list or <em>silver</em>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// promotion phase</span>
+</span><span class='line'><span class="kt">uint64_t</span> <span class="n">time_now</span> <span class="o">=</span> <span class="n">get_nanotime</span><span class="p">();</span>
+</span><span class='line'><span class="k">for</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens_count</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">){</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">cycle_refreshed</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">cycle_promoted</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">black</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">obj</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>        <span class="c1">// promote generation</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">i</span> <span class="o">!=</span> <span class="p">(</span><span class="n">conf</span><span class="p">.</span><span class="n">gens_count</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">time_now</span> <span class="o">-</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">promotion_time</span> <span class="o">&gt;</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">promotion_interval</span><span class="p">){</span>
+</span><span class='line'>            <span class="k">do</span><span class="p">{</span>
+</span><span class='line'>                <span class="n">gc_gen_set</span><span class="p">(</span><span class="n">obj</span><span class="p">,(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">));</span>
+</span><span class='line'>                <span class="c1">// move to next generation</span>
+</span><span class='line'>                <span class="n">gc_list_move</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="o">&amp;</span><span class="p">(</span><span class="n">black</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]));</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">cycle_promoted</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>                <span class="c1">// check pause threshold</span>
+</span><span class='line'>                <span class="n">gc_cycle_check</span>
+</span><span class='line'>                <span class="n">obj</span> <span class="o">=</span> <span class="n">black</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</span><span class='line'>            <span class="p">}</span><span class="k">while</span><span class="p">(</span><span class="n">obj</span> <span class="o">!=</span> <span class="n">null</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">promotion_time</span> <span class="o">=</span> <span class="n">get_nanotime</span><span class="p">();</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// refresh generation</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">time_now</span> <span class="o">-</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">refresh_time</span> <span class="o">&gt;</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">refresh_interval</span><span class="p">){</span>
+</span><span class='line'>            <span class="k">while</span><span class="p">(</span><span class="n">obj</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>                <span class="c1">// if has root references</span>
+</span><span class='line'>                <span class="k">if</span><span class="p">(</span><span class="n">gc_root_ref_count</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">){</span>
+</span><span class='line'>                    <span class="c1">// mark as grey</span>
+</span><span class='line'>                    <span class="n">gc_list_move</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="o">&amp;</span><span class="n">grey</span><span class="p">);</span>
+</span><span class='line'>                    <span class="n">gc_mark_grey</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>                <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>                    <span class="c1">// mark as silver</span>
+</span><span class='line'>                    <span class="n">gc_list_move</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="o">&amp;</span><span class="n">silver</span><span class="p">);</span>
+</span><span class='line'>                    <span class="n">gc_mark_silver</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>                <span class="p">}</span>
+</span><span class='line'>                <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">cycle_refreshed</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>                <span class="c1">// check pause threshold</span>
+</span><span class='line'>                <span class="n">gc_cycle_check</span>
+</span><span class='line'>                <span class="n">obj</span> <span class="o">=</span> <span class="n">black</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="n">conf</span><span class="p">.</span><span class="n">gens</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">refresh_time</span> <span class="o">=</span> <span class="n">get_nanotime</span><span class="p">();</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next phase after promotion/refreshment is marking phase.
+During this phase we go over all <em>grey</em> objects and mark them as <em>black</em> using class assigned <strong>gc_mark_black</strong> function pointer.
+Now in our <em>gc_object</em>&rsquo;s class we assigned it to <strong>gc_object_mark_black</strong> function which is straightforward as we just iterate over
+references object contains, mark them as <em>grey</em> if they are <em>white</em> or <em>silver</em> and after that mark object as <em>black</em>.
+Note how we are using <strong>gc_cycle_check_no_return</strong> <em>macro</em> which is almost the same as <strong>gc_cycle_check</strong> <em>macro</em> except that it doesn&rsquo;t
+ ends the cycle by calling <strong>gc_cycle_end</strong> as we are doing the same check in caller code using <strong>gc_cycle_check</strong> <em>macro</em>.
+This is needed to end cycle prematurely from callee <em>gc_mark_black</em> function.
+This might sound as overly complex but this way we can extend our garbage collector to support objects with any kind of reference layout which might come handy for future.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// mark phase</span>
+</span><span class='line'><span class="k">while</span><span class="p">(</span><span class="n">grey</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>    <span class="p">(</span><span class="n">grey</span><span class="o">-&gt;</span><span class="n">class</span><span class="o">-&gt;</span><span class="n">gc_mark_black</span><span class="p">)(</span><span class="n">grey</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>    <span class="c1">// check pause threshold</span>
+</span><span class='line'>    <span class="n">gc_cycle_check</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#define gc_cycle_check_no_return \</span>
+</span><span class='line'><span class="cp">if(conf.cycle_threshold &gt;= conf.pause_threshold){ \</span>
+</span><span class='line'><span class="cp">    if((get_nanotime() - conf.cycle_time) &gt;= conf.max_pause){ \</span>
+</span><span class='line'><span class="cp">        return; \</span>
+</span><span class='line'><span class="cp">    } \</span>
+</span><span class='line'><span class="cp">    conf.cycle_objects += conf.cycle_threshold; \</span>
+</span><span class='line'><span class="cp">    conf.cycle_threshold = 0; \</span>
+</span><span class='line'><span class="cp">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// gc object mark black</span>
+</span><span class='line'><span class="kt">void</span> <span class="n">gc_object_mark_black</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">){</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">gc_object</span><span class="o">**</span> <span class="n">refs</span> <span class="o">=</span> <span class="p">(</span><span class="n">gc_object</span><span class="o">**</span><span class="p">)(</span><span class="n">obj</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// start of refs array</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// for each ref</span>
+</span><span class='line'>    <span class="k">for</span><span class="p">(</span><span class="kt">uint16_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">obj</span><span class="o">-&gt;</span><span class="n">refs_count</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">refs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="n">null</span> <span class="o">&amp;&amp;</span> <span class="n">gc_color_is_silver_or_white</span><span class="p">(</span><span class="n">refs</span><span class="p">[</span><span class="n">i</span><span class="p">])){</span>
+</span><span class='line'>            <span class="c1">// mark object as grey</span>
+</span><span class='line'>            <span class="n">gc_list_move</span><span class="p">(</span><span class="n">refs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="o">&amp;</span><span class="n">grey</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">gc_mark_grey</span><span class="p">(</span><span class="n">refs</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+</span><span class='line'>            <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>            <span class="c1">// check pause threshold</span>
+</span><span class='line'>            <span class="n">gc_cycle_check_no_return</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// mark object as black</span>
+</span><span class='line'>    <span class="n">gc_list_move</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span><span class="o">&amp;</span><span class="p">(</span><span class="n">black</span><span class="p">[</span><span class="n">gc_gen_num</span><span class="p">(</span><span class="n">obj</span><span class="p">)]));</span>
+</span><span class='line'>    <span class="n">gc_mark_black</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next comes the tricky part. Now we are left with <em>silver</em> objects that aren&rsquo;t entirely white or grey yet.
+What we are going to do is to go through all generations starting with older ones and check if objects in that generation might contain
+our <em>silver</em> object. This might sound trivial but it&rsquo;s more tricky. We are going to check our <em>silver</em> objects using <strong>gc_contains</strong> function pointer in the <em>class</em>
+which in our case will point to <strong>gc_object_contains</strong> function. This is all for the same sake of extensibility of our garbage collector.
+Now if the object is not found in all black objects of all generations we can safely mark it as <em>white</em>. On the other hand if it&rsquo;s found  we need to
+first correct it&rsquo;s generation, mark it as <em>grey</em> and recheck all left over <em>grey</em> objects all over again in order to safely trace references that this object might contain which on the other hand might be some <em>silver</em> objects too. This way we decrease the amount of <em>silver</em> objects that we need to check to essential minimum as the operation itself is very expensive.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// mark silver phase</span>
+</span><span class='line'><span class="k">while</span><span class="p">(</span><span class="n">silver</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>    <span class="n">bool</span> <span class="n">found</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">uint8_t</span> <span class="n">to_gen</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">uint8_t</span> <span class="n">i</span> <span class="o">=</span> <span class="n">conf</span><span class="p">.</span><span class="n">gens_count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">while</span><span class="p">(</span><span class="nb">true</span><span class="p">){</span>
+</span><span class='line'>        <span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">black</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</span><span class='line'>        <span class="k">while</span><span class="p">(</span><span class="n">obj</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>            <span class="k">if</span><span class="p">((</span><span class="n">obj</span><span class="o">-&gt;</span><span class="n">class</span><span class="o">-&gt;</span><span class="n">gc_contains</span><span class="p">)(</span><span class="n">obj</span><span class="p">,</span><span class="n">silver</span><span class="p">)){</span>
+</span><span class='line'>                <span class="n">found</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>                <span class="n">to_gen</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+</span><span class='line'>                <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="n">gc_cycle_check</span>
+</span><span class='line'>            <span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">found</span> <span class="o">||</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>        <span class="o">--</span><span class="n">i</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="n">found</span><span class="p">){</span>
+</span><span class='line'>        <span class="c1">// correct generation and mark as grey</span>
+</span><span class='line'>        <span class="n">gc_gen_set</span><span class="p">(</span><span class="n">silver</span><span class="p">,</span><span class="n">to_gen</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">gc_mark_grey</span><span class="p">(</span><span class="n">silver</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">gc_list_move</span><span class="p">(</span><span class="n">silver</span><span class="p">,</span><span class="o">&amp;</span><span class="n">grey</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>        <span class="c1">// run mark grey phase</span>
+</span><span class='line'>        <span class="k">while</span><span class="p">(</span><span class="n">grey</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>            <span class="p">(</span><span class="n">grey</span><span class="o">-&gt;</span><span class="n">class</span><span class="o">-&gt;</span><span class="n">gc_mark_black</span><span class="p">)(</span><span class="n">grey</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>            <span class="c1">// check pause threshold</span>
+</span><span class='line'>            <span class="n">gc_cycle_check</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>        <span class="c1">// mark as white</span>
+</span><span class='line'>        <span class="n">gc_mark_white</span><span class="p">(</span><span class="n">silver</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">gc_list_move</span><span class="p">(</span><span class="n">silver</span><span class="p">,</span><span class="o">&amp;</span><span class="n">white</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="c1">// check pause threshold</span>
+</span><span class='line'>    <span class="n">gc_cycle_check</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// this checks if object contains reference object</span>
+</span><span class='line'><span class="n">bool</span> <span class="n">gc_object_contains</span><span class="p">(</span><span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span><span class="p">,</span> <span class="n">gc_object</span><span class="o">*</span> <span class="n">ref</span><span class="p">){</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">gc_object</span><span class="o">**</span> <span class="n">refs</span> <span class="o">=</span> <span class="p">(</span><span class="n">gc_object</span><span class="o">**</span><span class="p">)(</span><span class="n">obj</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// start of refs array</span>
+</span><span class='line'>    <span class="k">for</span><span class="p">(</span><span class="kt">uint16_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">obj</span><span class="o">-&gt;</span><span class="n">refs_count</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">refs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">ref</span><span class="p">)</span>
+</span><span class='line'>            <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally we need to sweep all <em>white</em> objects, by moving them to <em>transparent</em> list.
+Next we just cleanup the <em>transparent</em> list again while also checking for the pause threshold using <strong>gc_cycle_check</strong> <em>macro</em> again.
+And finally we mark cycle as full and end it using <strong>gc_cycle_end</strong> function.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// sweep phase</span>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="n">white</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>    <span class="c1">// make object transparent</span>
+</span><span class='line'>    <span class="n">gc_list_move_all</span><span class="p">(</span><span class="o">&amp;</span><span class="n">white</span><span class="p">,</span><span class="o">&amp;</span><span class="n">transparent</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">50</span><span class="p">;</span>
+</span><span class='line'>    <span class="c1">// check pause threshold</span>
+</span><span class='line'>    <span class="n">gc_cycle_check</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// transparent cleanup phase after cycle</span>
+</span><span class='line'><span class="k">while</span><span class="p">(</span><span class="n">transparent</span> <span class="o">!=</span> <span class="n">null</span><span class="p">){</span>
+</span><span class='line'>    <span class="p">(</span><span class="n">transparent</span><span class="o">-&gt;</span><span class="n">class</span><span class="o">-&gt;</span><span class="n">gc_finalize</span><span class="p">)(</span><span class="n">transparent</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">gc_object</span><span class="o">*</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">transparent</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">transparent</span> <span class="o">=</span> <span class="n">obj</span><span class="o">-&gt;</span><span class="n">gc_next</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">free</span><span class="p">(</span><span class="n">obj</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">cycle_threshold</span> <span class="o">+=</span> <span class="mi">11</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">conf</span><span class="p">.</span><span class="n">cycle_collected</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>    <span class="c1">// check pause threshold</span>
+</span><span class='line'>    <span class="n">gc_cycle_check</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// set cycle full</span>
+</span><span class='line'><span class="n">conf</span><span class="p">.</span><span class="n">cycle_full</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">return</span> <span class="nf">gc_cycle_end</span><span class="p">();</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now that we have a garbage collector we need a way to test it to be sure it&rsquo;s working correctly.
+To do that we&rsquo;ll create a micro DSL test language that will look like this. This language is inspired by a similar
+language that I&rsquo;ve created to test memory allocator in previous article. This language is fairly compact.
+Note that putting an object into the slot doesn&rsquo;t means it automatically has a root reference. Objects that don&rsquo;t have root reference or
+are referenced by root objects might get deleted after gc but our test compiler will check that kind of objects during compilation so we won&rsquo;t have any <em>Segmentation Fault</em>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># one line comment starts with # character
+</span><span class='line'>0=12   # allocate an object that can contain 12 references and set it to slot 0
+</span><span class='line'>+0     # increment root reference count of the object that is in slot 0 
+</span><span class='line'>-0     # decrement root reference count of the object that is in slot 0
+</span><span class='line'>0[0]=1 # set first reference of object in slot 0 to be object in slot 1
+</span><span class='line'>gc     # call garbage collector
+</span><span class='line'>0=2 gc # multiple statements are separated by white space or new line</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In order to actually write tests for that I&rsquo;ve created <em>gctestgen.rb</em> <em>Ruby</em> script that can generate random test files of any size.
+This test have iterations. In each iteration first we allocate objects, then we decrement root reference counts of some random objects from previous iteration.
+After that we initialize references in objects randomly and run garbage collection. This way we simulate behaviour of an application allocating objects and running garbage collection.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># -n number of iterations</span>
+</span><span class='line'><span class="c"># -c objects per iteration</span>
+</span><span class='line'><span class="c"># -f maximum number of references object can have</span>
+</span><span class='line'><span class="c"># -r percentage of root objects</span>
+</span><span class='line'><span class="c"># -s percentage of survivors</span>
+</span><span class='line'><span class="c"># -d percentage of root objects to decrement on next iteration</span>
+</span><span class='line'><span class="nv">$ </span>./gctestgen.rb -n 60 -c 1000 -f 32 -s 20 -r 10 -d 5 &gt; test.t
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now in order to compile our test I wrote a mini meta-compiler <strong>gctest.rb</strong> in <em>Ruby</em> that generates <em>.c</em> file for testing and links it against our garbage collector and creates executable binary <strong>gctest</strong>.
+While compiling it also simulates garbage collection (simple full garbage collection each time) and counts expected number of objects to survive entire test.
+After that it runs that executable and compares it&rsquo;s output to expected count to proof correctness of the garbage collector. The source code is in repository so you could all study it.
+The following initial configuration is provided for testing which is just 3 generations.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">// initialize gc object class</span>
+</span><span class='line'><span class="n">cls</span><span class="p">.</span><span class="n">gc_mark_black</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">gc_object_mark_black</span><span class="p">;</span>
+</span><span class='line'><span class="n">cls</span><span class="p">.</span><span class="n">gc_contains</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">gc_object_contains</span><span class="p">;</span>
+</span><span class='line'><span class="n">cls</span><span class="p">.</span><span class="n">gc_finalize</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">garbage_collected_finalize</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// initialize gc configuration</span>
+</span><span class='line'><span class="n">gc_config</span> <span class="n">config</span><span class="p">;</span>
+</span><span class='line'><span class="n">gc_gen_config</span> <span class="n">c</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span>
+</span><span class='line'><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">refresh_interval</span> <span class="o">=</span> <span class="mi">500000ull</span><span class="p">;</span> <span class="c1">// 0.5 millis</span>
+</span><span class='line'><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">promotion_interval</span> <span class="o">=</span> <span class="mi">1000000ull</span><span class="p">;</span> <span class="c1">// 1 millis</span>
+</span><span class='line'><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">refresh_interval</span> <span class="o">=</span> <span class="mi">2000000ull</span><span class="p">;</span> <span class="c1">// 2 millis</span>
+</span><span class='line'><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="n">promotion_interval</span> <span class="o">=</span> <span class="mi">6000000ull</span><span class="p">;</span> <span class="c1">// 6 millis</span>
+</span><span class='line'><span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">].</span><span class="n">refresh_interval</span> <span class="o">=</span> <span class="mi">250000000ull</span><span class="p">;</span> <span class="c1">// 15 millis</span>
+</span><span class='line'><span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">].</span><span class="n">promotion_interval</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// not needed for last generation</span>
+</span><span class='line'><span class="n">config</span><span class="p">.</span><span class="n">gens_count</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+</span><span class='line'><span class="n">config</span><span class="p">.</span><span class="n">gens</span> <span class="o">=</span> <span class="n">c</span><span class="p">;</span>
+</span><span class='line'><span class="n">config</span><span class="p">.</span><span class="n">pause_threshold</span> <span class="o">=</span> <span class="mi">100</span><span class="p">;</span> <span class="c1">// 100 objects</span>
+</span><span class='line'><span class="n">config</span><span class="p">.</span><span class="n">max_pause</span> <span class="o">=</span> <span class="mi">200000000</span><span class="p">;</span> <span class="c1">// 200 milliseconds</span>
+</span><span class='line'><span class="n">gc_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">config</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>./gctest.rb ./test.t
+</span><span class='line'>total object allocations: 60000
+</span><span class='line'>expected number of objects to survive gc: 4606
+</span><span class='line'>running gc <span class="nb">test</span>: ./test.t
+</span><span class='line'>gc collected 850 objects took 1.02 millis <span class="o">[</span> 0/0 0/0 0/0 <span class="o">]</span>
+</span><span class='line'>gc collected 850 objects took 0.07 millis <span class="o">[</span> 142/0 142/0 0/0 <span class="o">]</span>
+</span><span class='line'>gc collected 850 objects took 0.07 millis <span class="o">[</span> 148/0 0/0 0/0 <span class="o">]</span>
+</span><span class='line'>...........................................................
+</span><span class='line'>gc collected 856 objects took 2.93 millis <span class="o">[</span> 147/0 0/301 0/0 <span class="o">]</span>
+</span><span class='line'>gc collected 850 objects took 0.09 millis <span class="o">[</span> 150/0 359/0 0/0 <span class="o">]</span>
+</span><span class='line'><span class="nb">test </span>ended, took 246.68 millis
+</span><span class='line'>gc collected 0 objects took 200.00 millis <span class="o">[</span> 153/0 155/0 0/8561 <span class="o">]</span>
+</span><span class='line'>gc collected 0 objects took 200.00 millis <span class="o">[</span> 0/0 0/0 0/0 <span class="o">]</span>
+</span><span class='line'>gc collected 0 objects took 200.00 millis <span class="o">[</span> 0/0 0/0 0/0 <span class="o">]</span>
+</span><span class='line'>gc collected 3955 objects took 111.26 millis <span class="o">[</span> 0/0 0/0 0/0 <span class="o">]</span>
+</span><span class='line'>checked objects that survived: 4606
+</span><span class='line'>garbage collected 55394
+</span><span class='line'>actual survivors 4606
+</span><span class='line'>expected survivors match with actual survivors
+</span><span class='line'>total gc calls: 60
+</span><span class='line'>total <span class="nb">time </span>spent in gc: 53.74 millis
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see test took 250ms to allocate 60000 objects. Garbage collector was called 60 times and overall took 53.74ms after which only 4606 objects survived.
+We wrote a <em>Garbage Collector</em>, finally. That&rsquo;s it folks, have a nice garbage collector hacking time!!!
+<img src="http://i.imgur.com/OIcxN1t.png" alt="Space Dandy &amp; Loli" /></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Dmitry Geurkov</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-09-06T00:01:19+04:00" pubdate data-updated="true">Sep 6<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/c/'>c</a>, <a class='category' href='/blog/categories/gc/'>gc</a>, <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/memory/'>memory</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world/" data-via="" data-counturl="http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/" title="Previous Post: Lifting Shadows off a Memory Allocation">&laquo; Lifting Shadows off a Memory Allocation</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>About Me</h1>
+  <a href="/about"><img src="/images/me.jpg"></a>
+  <p>
+  I'm software developer, functional programming enthusiast 
+  and open source evangelist from <a href="https://en.wikipedia.org/wiki/Tbilisi">Tbilisi, Georgia</a>
+  living in <a href="https://en.wikipedia.org/wiki/Kiev">Kiev, Ukraine</a>
+  </p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/09/06/of-all-the-garbage-in-the-world/">Of All The Garbage in The World</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Lifting Shadows off a Memory Allocation</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/25/write-you-a-monad-for-no-particular-reason-at-all/">Write you a Monad for no particular reason at all!</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/">Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+        <a class="twitter-timeline"  href="https://twitter.com/dgeurkov"  data-widget-id="442633732726349824">Tweets by @dgeurkov</a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/troydm">@troydm</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'troydm',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'dgeurkov';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world/';
+        var disqus_url = 'http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
