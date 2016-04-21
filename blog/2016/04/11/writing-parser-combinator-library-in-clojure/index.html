@@ -1,0 +1,1749 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Writing Parser Combinator Library in Clojure - Troydm's Blog</title>
+  <meta name="author" content="Dmitry Geurkov">
+
+  
+  <meta name="description" content="TL;DR Writing parser combinator library in Clojure from scratch Recently I&rsquo;ve had an fortunate opportunity to participate in a commercial &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Troydm's Blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/lib/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Troydm's Blog</a></h1>
+  
+    <h2>A personal blog about software development</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://ddg.gg/" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:troydm.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="https://github.com/troydm/">Github</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Writing Parser Combinator Library in Clojure</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-04-11T23:23:41+04:00" pubdate data-updated="true">Apr 11<span>th</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>TL;DR Writing parser combinator library in Clojure from scratch</p>
+
+<p>Recently I&rsquo;ve had an fortunate opportunity to participate in a commercial project that was heavy on parsing and I&rsquo;ve decided to use <a href="http://clojure.org/">Clojure</a> as my main tool for doing it.
+As you might all know <strong>Clojure</strong> is not new to the game and is quite mature functional programming language with a hidden power of <a href="https://en.wikipedia.org/wiki/Lisp_%28programming_language%29">Lisp</a>. One of the distinct features of <strong>Clojure</strong> which I personally adore is nrepl and <a href="https://en.wikipedia.org/wiki/Interactive_programming">Interactive Programming</a> incremental development style which it cultivates. This is by no means something new, <a href="https://en.wikipedia.org/wiki/Common_Lisp">Common Lisp</a> has it via <em>slime/swank</em>, some of <a href="https://en.wikipedia.org/wiki/Scheme_%28programming_language%29">Scheme</a> implementations have <em>geiser</em> support and almost all Smalltalk variants could be considered as full interactive programming environments, one notable example being <a href="http://pharo.org/">Pharo</a>.
+There are some more specialized interactive programming environments like <a href="https://processing.org/">Processing</a> and <a href="https://supercollider.github.io/">SuperCollider</a> which deal with either sound or visual or even both but today we&rsquo;ll be talking about parsing and all things related instead.
+Before I&rsquo;ll start explaining what we are actually trying to build I would like to introduce you to a really nice open source library that I&rsquo;ve successfully used in a commercial project I&rsquo;ve mentioned before, called <a href="https://github.com/blancas/kern">kern</a>. But as all things good there is always some value in trying to build your own even better, at least for me it was an insightful journey. So yeah as title says we&rsquo;ll be building parser combinator library in <strong>Clojure</strong> just to learn a thing or two but solely just for fun. The full source for impatient ones is in my <a href="https://github.com/troydm/ccp/">ccp</a> repo.
+So let&rsquo;s get started then.</p>
+
+<p><img src="http://i.imgur.com/JG55prH.png" alt="Violin Loli" /></p>
+
+<!--more-->
+
+
+<p>I&rsquo;m no good with long explanations and to keep things simple I&rsquo;ll start with two references that I&rsquo;ve heavily used while building <em>ccp</em>. One is being <em>kern</em> as you&rsquo;ve guessed it and the second one is <a href="https://wiki.haskell.org/Parsec">parsec</a>. Both are excellent parser combinator libraries and are good references for self-study. Before we&rsquo;ve delve into what is parser combinator I would like to talk about a simple concept of a <em>parser</em>. Now what is a <em>parser</em>? Something that parses a thing and returns result as you&rsquo;ve guessed it, right?! Wait, isn&rsquo;t that a function of a &ndash;> b. Remarkable similarity, indeed.
+A function takes some arbitrary data <em>a</em>, parsers it and returns result <em>b</em>. Wait, what if it can&rsquo;t parse data and return result? Then we&rsquo;ll return an error instead of parsing result. In <em>Haskell</em> our type definition for parser would be something like this</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='haskell'><span class='line'><span class="kr">data</span> <span class="kt">Parser</span> <span class="n">a</span> <span class="n">b</span> <span class="ow">=</span> <span class="kt">Parser</span> <span class="p">(</span><span class="n">a</span> <span class="ow">-&gt;</span> <span class="kt">Either</span> <span class="kt">String</span> <span class="n">b</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As some you of you may have noticed our <em>Parser</em> is actually a <em>ReaderT a Either String b</em> monad transformer in disguise. As we are parsing <em>a</em> we&rsquo;ve also need to constantly mutate it as it&rsquo;s being parsed so probably we are mistaken and we actually need an <em>StateT a Either String b</em> monad transformer instead, but wait,
+aren&rsquo;t we going to build everything in <strong>Clojure</strong>? Yeah, right so we don&rsquo;t need any strict type definitions.
+We&rsquo;ll just use simple function that takes data as input and returns parsing result and will mutate state of input data as we go. And for errors will have some special <em>deftype</em> <strong>ParserError</strong>. Any parser that can&rsquo;t parse data will return <strong>ParserError</strong> with detailed error message description.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">deftype </span><span class="nv">ParserError</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">state</span> <span class="nv">msg</span><span class="p">])</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>What is this <em>ps</em> and <em>state</em>? Patience my friend I&rsquo;ll explain it later. First let&rsquo;s talk about data we are going to parse. What should it be? Well it can be literally anything but we need
+some contract in order to parse it bit by bit right? So let&rsquo;s introduce a <em>protocol</em> called <strong>ParseStream</strong>. Any type that implements our <strong>ParseStream</strong> protocol is good enough to be an input data for our parser. We can go back and forth element by element traversing this data stream using <em>next-elem</em>, <em>prev-elem</em> and <em>current-elem</em> methods.
+Our <strong>ParseStream</strong> implementors need to track state and mutate it as we go over the data with parsers. This is actually a data + state concept. As we are writing everything in Clojure, we&rsquo;ll just use <em>deftype</em> with mutable state variable and data. I know about dangers of using mutable variables but as we are only giving limited access to our type via strict protocol there is no way our parser can harm our inner <strong>ParseStream</strong> state in any way, so we are kinda safe. In order to be able to produce a <strong>ParseStream</strong> out of any data we&rsquo;ll introduce another protocol called <strong>ParseStreamFactory</strong>.
+Any type/object that implements this protocol will be convertible into a valid <strong>ParseStream</strong>. As any <strong>ParseStream</strong> tracks state it can reset itself to initial position using <em>reset</em> method, and record and restore it&rsquo;s state using <em>get-state</em> and <em>restore-state</em> methods. We can also check if it&rsquo;s state is initial or ending using <em>start-state?</em> and <em>end-state?</em> methods.
+Actually our <strong>ParseStream</strong> is just some good old <a href="https://en.wikipedia.org/wiki/Iterator">Iterator</a> pattern from Object-Orient world.
+We are combining Functional and Object-Oriented programming using <strong>Clojure</strong> in order to produce the most elegant solution to the given problem at hand. This method of programming is quite powerful, best of both worlds indeed. Now you know what <em>ps</em> and <em>state</em> in <strong>ParserError</strong> is, it&rsquo;s <strong>ParseStream</strong> data and it&rsquo;s <em>state</em> when the <strong>ParserError</strong> occurred. Also we would like to have a human readable description of parser error so our <strong>ParseStream</strong> will have <em>describe-error</em> method too. We&rsquo;ll also define some helper methods to work with <strong>ParserError</strong>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defprotocol </span><span class="nv">ParseStreamFactory</span>
+</span><span class='line'>  <span class="s">&quot;A parse stream factory protocol&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">parse-stream</span> <span class="p">[</span><span class="nv">d</span><span class="p">]))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defprotocol </span><span class="nv">ParseStreamCharSequenceFactory</span>
+</span><span class='line'>  <span class="s">&quot;A parse stream char sequence factory protocol&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">char-sequence</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defprotocol </span><span class="nv">ParseStream</span>
+</span><span class='line'>  <span class="s">&quot;A parse stream protocol used by parser&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">reset</span> <span class="p">[</span><span class="nv">ps</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">current-elem</span> <span class="p">[</span><span class="nv">ps</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">prev-elem</span> <span class="p">[</span><span class="nv">ps</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">next-elem</span> <span class="p">[</span><span class="nv">ps</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">get-state</span> <span class="p">[</span><span class="nv">ps</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">restore-state</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">st</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">state-changed?</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">st</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">start-state?</span> <span class="p">[</span><span class="nv">ps</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">end-state?</span> <span class="p">[</span><span class="nv">ps</span><span class="p">])</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">describe-error</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">pe</span><span class="p">]))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">deftype </span><span class="nv">ParserError</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">state</span> <span class="nv">msg</span><span class="p">]</span>
+</span><span class='line'>  <span class="nv">Object</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">toString</span> <span class="p">[</span><span class="nv">self</span><span class="p">]</span> <span class="p">(</span><span class="nf">describe-error</span> <span class="nv">ps</span> <span class="nv">self</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">parser-error</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">msg</span><span class="p">]</span> <span class="p">(</span><span class="nf">ParserError.</span> <span class="nv">ps</span> <span class="p">(</span><span class="nf">get-state</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">msg</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">parser-error-stream</span> <span class="p">[</span><span class="nv">pe</span><span class="p">]</span> <span class="p">(</span><span class="nf">.ps</span> <span class="nv">pe</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">parser-error-state</span> <span class="p">[</span><span class="nv">pe</span><span class="p">]</span> <span class="p">(</span><span class="nf">.state</span> <span class="nv">pe</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">parser-error-message</span> <span class="p">[</span><span class="nv">pe</span><span class="p">]</span> <span class="p">(</span><span class="nf">.msg</span> <span class="nv">pe</span><span class="p">))</span>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">parser-error?</span> <span class="p">[</span><span class="nv">pe</span><span class="p">]</span> <span class="p">(</span><span class="nb">= </span><span class="p">(</span><span class="nf">type</span> <span class="nv">pe</span><span class="p">)</span> <span class="nv">ParserError</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s define String implementation of <strong>ParseStream</strong>. Our <strong>StringParseStream</strong> will go character by character incrementing/decrementing indexed position <em>p</em>.
+The code is pretty straightforward. We just save state of parse stream into index position starting at <em>-1</em> using <em>unsynchronized-mutable</em> variable <em>p</em>.
+We don&rsquo;t need any thread-safety as our parse stream is guaranteed to be used only by one thread. Also in order to describe error we need to correctly inform our parsing library user about exact location in String where that error occurred. For this we use private function <em>line-col</em> which counts lines and columns and returns exact line and column number of that index position.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn- </span><span class="nv">line-col</span>
+</span><span class='line'> <span class="s">&quot;find out line/column at position p in String s&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">s</span> <span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">len</span> <span class="p">(</span><span class="nf">.length</span> <span class="nv">s</span><span class="p">)]</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">p</span> <span class="nv">p</span> <span class="nv">l</span> <span class="mi">1</span> <span class="nv">c</span> <span class="mi">1</span><span class="p">]</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&lt;= </span><span class="nv">p</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="o">`</span><span class="p">(</span><span class="o">~</span><span class="nv">l</span> <span class="o">~</span><span class="nv">c</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&gt;= </span><span class="nv">p</span> <span class="nv">len</span><span class="p">)</span>
+</span><span class='line'>     <span class="o">`</span><span class="p">(</span><span class="o">~</span><span class="nv">l</span> <span class="o">~</span><span class="p">(</span><span class="nb">+ </span><span class="nv">p</span> <span class="nv">c</span><span class="p">))</span>
+</span><span class='line'>     <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="p">(</span><span class="nf">.charAt</span> <span class="nv">s</span> <span class="nv">p</span><span class="p">)</span> <span class="sc">\n</span><span class="nv">ewline</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nb">- </span><span class="nv">p</span> <span class="mi">1</span><span class="p">)</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">l</span> <span class="mi">1</span><span class="p">)</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nb">- </span><span class="nv">p</span> <span class="mi">1</span><span class="p">)</span> <span class="nv">l</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">c</span> <span class="mi">1</span><span class="p">))))))))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">deftype </span><span class="nv">StringParseStream</span> <span class="p">[</span><span class="o">^</span><span class="ss">:unsynchronized-mutable</span> <span class="nv">p</span> <span class="nv">s</span><span class="p">]</span>
+</span><span class='line'> <span class="nv">ParseStream</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">reset</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nf">set!</span> <span class="nv">p</span> <span class="mi">-1</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">current-elem</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">or </span><span class="p">(</span><span class="nf">start-state?</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">end-state?</span> <span class="nv">ps</span><span class="p">))</span> <span class="nv">nil</span> <span class="p">(</span><span class="nf">.charAt</span> <span class="nv">s</span> <span class="nv">p</span><span class="p">)))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">prev-elem</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">not </span><span class="p">(</span><span class="nf">start-state?</span> <span class="nv">ps</span><span class="p">))</span>
+</span><span class='line'>                  <span class="p">(</span><span class="nf">set!</span> <span class="nv">p</span> <span class="p">(</span><span class="nb">- </span><span class="nv">p</span> <span class="mi">1</span><span class="p">)))</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">current-elem</span> <span class="nv">ps</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">next-elem</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">not </span><span class="p">(</span><span class="nf">end-state?</span> <span class="nv">ps</span><span class="p">))</span>
+</span><span class='line'>                  <span class="p">(</span><span class="nf">set!</span> <span class="nv">p</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">p</span> <span class="mi">1</span><span class="p">)))</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">current-elem</span> <span class="nv">ps</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">get-state</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="nv">p</span><span class="p">)</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">restore-state</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">st</span><span class="p">]</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">and </span><span class="p">(</span><span class="nb">&gt;= </span><span class="nv">st</span> <span class="mi">-1</span><span class="p">)</span> <span class="p">(</span><span class="nb">&lt;= </span><span class="nv">st</span> <span class="p">(</span><span class="nf">.length</span> <span class="nv">s</span><span class="p">)))</span> <span class="p">(</span><span class="nf">set!</span> <span class="nv">p</span> <span class="nv">st</span><span class="p">))</span> <span class="nv">p</span><span class="p">)</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">state-changed?</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">st</span><span class="p">]</span> <span class="p">(</span><span class="nb">not= </span><span class="nv">st</span> <span class="nv">p</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">start-state?</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nb">= </span><span class="mi">-1</span> <span class="nv">p</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">end-state?</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nb">= </span><span class="nv">p</span> <span class="p">(</span><span class="nf">.length</span> <span class="nv">s</span><span class="p">)))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">describe-error</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">pe</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">let </span><span class="p">[[</span><span class="nv">l</span> <span class="nv">c</span><span class="p">]</span> <span class="p">(</span><span class="nf">line-col</span> <span class="nv">s</span> <span class="p">(</span><span class="nf">parser-error-state</span> <span class="nv">pe</span><span class="p">))]</span>
+</span><span class='line'>   <span class="p">(</span><span class="nb">str </span><span class="s">&quot;expecting &quot;</span> <span class="p">(</span><span class="nf">parser-error-message</span> <span class="nv">pe</span><span class="p">)</span> <span class="s">&quot; on line &quot;</span> <span class="nv">l</span> <span class="s">&quot; col &quot;</span> <span class="nv">c</span><span class="p">))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s implement the same but for any arbitrary <strong>Clojure</strong> sequence. Note how <em>describe-error</em> method differs compared to <strong>StringParseStream</strong> implementation.
+Rest of the code is almost exactly the same except that we are using sequence related functions instead of <em>String</em> related ones.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">deftype </span><span class="nv">SequenceParseStream</span> <span class="p">[</span><span class="o">^</span><span class="ss">:unsynchronized-mutable</span> <span class="nv">p</span> <span class="nv">s</span><span class="p">]</span>
+</span><span class='line'> <span class="nv">ParseStream</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">reset</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nf">set!</span> <span class="nv">p</span> <span class="mi">-1</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">current-elem</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">or </span><span class="p">(</span><span class="nf">start-state?</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">end-state?</span> <span class="nv">ps</span><span class="p">))</span> <span class="nv">nil</span> <span class="p">(</span><span class="nb">nth </span><span class="nv">s</span> <span class="nv">p</span><span class="p">)))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">prev-elem</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">not </span><span class="p">(</span><span class="nf">start-state?</span> <span class="nv">ps</span><span class="p">))</span>
+</span><span class='line'>                  <span class="p">(</span><span class="nf">set!</span> <span class="nv">p</span> <span class="p">(</span><span class="nb">- </span><span class="nv">p</span> <span class="mi">1</span><span class="p">)))</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">current-elem</span> <span class="nv">ps</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">next-elem</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">not </span><span class="p">(</span><span class="nf">end-state?</span> <span class="nv">ps</span><span class="p">))</span>
+</span><span class='line'>                  <span class="p">(</span><span class="nf">set!</span> <span class="nv">p</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">p</span> <span class="mi">1</span><span class="p">)))</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">current-elem</span> <span class="nv">ps</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">get-state</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="nv">p</span><span class="p">)</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">restore-state</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">st</span><span class="p">]</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">and </span><span class="p">(</span><span class="nb">&gt;= </span><span class="nv">st</span> <span class="mi">-1</span><span class="p">)</span> <span class="p">(</span><span class="nb">&lt;= </span><span class="nv">st</span> <span class="p">(</span><span class="nb">count </span><span class="nv">s</span><span class="p">)))</span> <span class="p">(</span><span class="nf">set!</span> <span class="nv">p</span> <span class="nv">st</span><span class="p">))</span> <span class="nv">p</span><span class="p">)</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">state-changed?</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">st</span><span class="p">]</span> <span class="p">(</span><span class="nb">not= </span><span class="nv">st</span> <span class="nv">p</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">start-state?</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nb">= </span><span class="mi">-1</span> <span class="nv">p</span><span class="p">))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">end-state?</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nb">= </span><span class="nv">p</span> <span class="p">(</span><span class="nb">count </span><span class="nv">s</span><span class="p">)))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">describe-error</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">pe</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">p</span> <span class="p">(</span><span class="nf">parser-error-state</span> <span class="nv">pe</span><span class="p">)]</span>
+</span><span class='line'>   <span class="p">(</span><span class="nb">str </span><span class="s">&quot;expecting &quot;</span> <span class="p">(</span><span class="nf">parser-error-message</span> <span class="nv">pe</span><span class="p">)</span> <span class="s">&quot; on index &quot;</span> <span class="nv">p</span> <span class="s">&quot; in sequence, but got: &quot;</span> <span class="p">(</span><span class="nb">nth </span><span class="nv">s</span> <span class="nv">p</span><span class="p">)))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now in order for most types to be convertible into <em>ParseStream</em> we need to extend them to implement <strong>ParseStreamFactory</strong> protocol.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="nf">extend-type</span> <span class="nv">String</span>
+</span><span class='line'>    <span class="nv">ParseStreamFactory</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">parse-stream</span> <span class="p">[</span><span class="nv">d</span><span class="p">]</span> <span class="p">(</span><span class="nf">StringParseStream.</span> <span class="mi">-1</span> <span class="nv">d</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nf">extend-type</span> <span class="nv">java.util.List</span>
+</span><span class='line'>    <span class="nv">ParseStreamFactory</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">parse-stream</span> <span class="p">[</span><span class="nv">d</span><span class="p">]</span> <span class="p">(</span><span class="nf">SequenceParseStream.</span> <span class="mi">-1</span> <span class="nv">d</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nf">extend-type</span> <span class="nv">clojure.lang.PersistentVector</span>
+</span><span class='line'>    <span class="nv">ParseStreamFactory</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">parse-stream</span> <span class="p">[</span><span class="nv">d</span><span class="p">]</span> <span class="p">(</span><span class="nf">SequenceParseStream.</span> <span class="mi">-1</span> <span class="nv">d</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nf">extend-type</span> <span class="nv">clojure.lang.PersistentVector$TransientVector</span>
+</span><span class='line'>    <span class="nv">ParseStreamFactory</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">parse-stream</span> <span class="p">[</span><span class="nv">d</span><span class="p">]</span> <span class="p">(</span><span class="nf">SequenceParseStream.</span> <span class="mi">-1</span> <span class="nv">d</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nf">extend-type</span> <span class="nv">clojure.lang.PersistentList</span>
+</span><span class='line'>    <span class="nv">ParseStreamFactory</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">parse-stream</span> <span class="p">[</span><span class="nv">d</span><span class="p">]</span> <span class="p">(</span><span class="nf">SequenceParseStream.</span> <span class="mi">-1</span> <span class="nv">d</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nf">extend-type</span> <span class="nv">clojure.lang.PersistentList$EmptyList</span>
+</span><span class='line'>    <span class="nv">ParseStreamFactory</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">parse-stream</span> <span class="p">[</span><span class="nv">d</span><span class="p">]</span> <span class="p">(</span><span class="nf">SequenceParseStream.</span> <span class="mi">-1</span> <span class="nv">d</span><span class="p">)))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Before we&rsquo;ll start writing our sample parsers I would like to introduce an macro that will help us in minimizing our code needed for writing almost any parser.
+This macro is called <em>parsed</em> and is simply a let + if combination that gives us ability to define a variable <em>e</em> initialized to some parsed value <em>p</em>, check if this value is
+parser error or not and depending on that return either <em>t</em> or <em>f</em> expression.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defmacro </span><span class="nv">parsed</span> <span class="p">[</span><span class="nv">e</span> <span class="nv">p</span> <span class="nv">t</span> <span class="nv">f</span><span class="p">]</span>
+</span><span class='line'>  <span class="o">`</span><span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="o">~</span><span class="nv">e</span> <span class="o">~</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'>       <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">parser-error?</span> <span class="o">~</span><span class="nv">e</span><span class="p">)</span> <span class="o">~</span><span class="nv">f</span> <span class="o">~</span><span class="nv">t</span><span class="p">)))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s define our first parser generating function called <em>satisfy</em>.
+Given a predicate function <em>pd</em> and <em>m</em> message it will give back a parser that will get next element from <strong>ParseStream</strong>, check if it satisfies the predicate.
+If it does it we&rsquo;ll return it, otherwise it will return <strong>ParserError</strong> with message <em>m</em>.
+Note how we would like to support two kinds of predicate functions, with 1 argument and with
+2 arguments second being actual <strong>ParseStream</strong> itself. To distiguish those two we&rsquo;ll use another private function called <em>n-args</em>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn- </span><span class="nv">n-args</span>
+</span><span class='line'> <span class="s">&quot;return number of arguments function can take&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">f</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="nb">-&gt; </span><span class="nv">f</span> <span class="nb">class </span><span class="nv">.getDeclaredMethods</span> <span class="nb">first </span><span class="nv">.getParameterTypes</span> <span class="nv">alength</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">satisfy</span>
+</span><span class='line'> <span class="s">&quot;satisfy predicate pd, if not return failure with m&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">pd</span> <span class="nv">m</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="p">(</span><span class="nf">n-args</span> <span class="nv">pd</span><span class="p">)</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">e</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">pd</span> <span class="nv">e</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>             <span class="nv">e</span>
+</span><span class='line'>             <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="nv">m</span><span class="p">))))</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">e</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">pd</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>             <span class="nv">e</span>
+</span><span class='line'>             <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="nv">m</span><span class="p">))))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Note how <em>satisfy</em> is both suitable for String streams as well as sequence streams. Before we&rsquo;ll define some simple String stream oriented parsers
+let&rsquo;s define one more crucial function that is necessary to define our parsers. What this function does is that it takes a parser <em>p</em>,
+saves <strong>ParseStream</strong> <em>ps</em>&rsquo;s state into <em>st</em> variable, applies <em>p</em> to <em>ps</em>, checks if result is <strong>ParserError</strong>, and if it is, it restores <em>ps</em>&rsquo;s state
+to value it had before <em>p</em>&rsquo;s application. Now simply put this function allows us to convert any parser that might fail into a parser that doesn&rsquo;t affects
+<strong>ParseStream</strong> in case of failure and restores it&rsquo;s state to the way it was before parser was applied to it.
+We can also define <em>restore</em> parser transformer that will restore stream every time.
+This parser transformers are actually called a parser combinator. So what is parser combinator? It&rsquo;s a function that takes as an input
+one or many parser functions and returns a parser that is result of combining those parsers. By combining we actually mean that parser combinator introduces an behaviour
+over already defined parser behaviour. This allows us to stack/combine parsers like a lego pieces and it&rsquo;s actually a very very powerful concept.
+In essence this concept is actually the real corner stone of functional programming and it&rsquo;s conceptually heart of power.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">rewind</span>
+</span><span class='line'> <span class="s">&quot;try parsing p and restore stream state on failure&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">st</span> <span class="p">(</span><span class="nf">get-state</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">parser-error?</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">do </span><span class="p">(</span><span class="nf">restore-state</span> <span class="nv">ps</span> <span class="nv">st</span><span class="p">)</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>            <span class="nv">e</span><span class="p">))))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">restore</span>
+</span><span class='line'> <span class="s">&quot;try parsing p and restore stream state afterwards&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">st</span> <span class="p">(</span><span class="nf">get-state</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">do </span><span class="p">(</span><span class="nf">restore-state</span> <span class="nv">ps</span> <span class="nv">st</span><span class="p">)</span> <span class="nv">e</span><span class="p">))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Note that we aren&rsquo;t limited to parser(s) as input for a parser combinator as we can have any kind of value that drives resulting behaviour of our parser.
+In that essence the function <em>satisfy</em> that we&rsquo;ve defined before is also an parser combinator. Okey zen reached, let&rsquo;s move on already!
+Now that we know what parser combinators actually are let&rsquo;s define some simple parser combinator called <em>chr</em> that can give us parser for any specific character.
+We also define <em>satisfy-char</em> parser combinator that is actually used to be sure that value we are trying to parse is of character type.
+It&rsquo;s not strictly necessary for <em>chr</em> but we&rsquo;ll define it anyway.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">satisfy-char</span>
+</span><span class='line'>  <span class="s">&quot;satisfy predicate pd for character, if not return failure with m&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="nv">pd</span> <span class="nv">m</span><span class="p">]</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">satisfy</span> <span class="o">#</span><span class="p">(</span><span class="nb">and </span><span class="p">(</span><span class="nf">char?</span> <span class="nv">%</span><span class="p">)</span> <span class="p">(</span><span class="nf">pd</span> <span class="nv">%</span><span class="p">))</span> <span class="nv">m</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">chr</span>
+</span><span class='line'>  <span class="s">&quot;expect character c&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="nv">c</span><span class="p">]</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy-char</span> <span class="o">#</span><span class="p">(</span><span class="nb">= </span><span class="nv">%</span> <span class="nv">c</span><span class="p">)</span> <span class="p">(</span><span class="nb">str </span><span class="p">(</span><span class="nb">pr-str </span><span class="nv">c</span><span class="p">)</span> <span class="s">&quot; character&quot;</span><span class="p">))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now using those parser combinators we can define some commonly used parsers</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">digit</span>
+</span><span class='line'>  <span class="s">&quot;expect digit character&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy-char</span> <span class="o">#</span><span class="p">(</span><span class="nf">Character/isDigit</span> <span class="nv">%</span><span class="p">)</span> <span class="s">&quot;digit&quot;</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">ws</span>
+</span><span class='line'>  <span class="s">&quot;expect whitespace character&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy-char</span> <span class="o">#</span><span class="p">(</span><span class="nf">Character/isWhitespace</span> <span class="nv">%</span><span class="p">)</span> <span class="s">&quot;whitespace&quot;</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">alpha</span>
+</span><span class='line'>  <span class="s">&quot;expect alphanum character&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy-char</span> <span class="o">#</span><span class="p">(</span><span class="nb">or </span><span class="p">(</span><span class="nf">Character/isLetter</span> <span class="nv">%</span><span class="p">)</span> <span class="p">(</span><span class="nf">Character/isDigit</span> <span class="nv">%</span><span class="p">))</span> <span class="s">&quot;alphanum&quot;</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">letter</span>
+</span><span class='line'>  <span class="s">&quot;expect letter character&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy-char</span> <span class="o">#</span><span class="p">(</span><span class="nf">Character/isLetter</span> <span class="nv">%</span><span class="p">)</span> <span class="s">&quot;letter&quot;</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">upper</span>
+</span><span class='line'>  <span class="s">&quot;expect uppercase character&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy-char</span> <span class="o">#</span><span class="p">(</span><span class="nf">Character/isUpperCase</span> <span class="nv">%</span><span class="p">)</span> <span class="s">&quot;uppercase&quot;</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">lower</span>
+</span><span class='line'>  <span class="s">&quot;expect lowercase character&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy-char</span> <span class="o">#</span><span class="p">(</span><span class="nf">Character/isLowerCase</span> <span class="nv">%</span><span class="p">)</span> <span class="s">&quot;lowercase&quot;</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">any-char</span>
+</span><span class='line'>  <span class="s">&quot;expect any character&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy</span> <span class="nv">char?</span> <span class="s">&quot;any character&quot;</span><span class="p">)))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s try using parsers and parser combinators that we&rsquo;ve defined so far.
+For this we&rsquo;ll use <em>parse</em> function that is actually a helper to convert
+input data to <strong>ParseStream</strong> if it isn&rsquo;t already a <strong>ParseStream</strong> and apply <em>p</em> to it</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">parse</span>
+</span><span class='line'> <span class="s">&quot;parse d data using p and return result, resets parse stream&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span> <span class="nv">d</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">p</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">satisfies?</span> <span class="nv">ParseStream</span> <span class="nv">d</span><span class="p">)</span>
+</span><span class='line'>     <span class="p">(</span><span class="k">do </span><span class="p">(</span><span class="nf">reset</span> <span class="nv">d</span><span class="p">)</span> <span class="nv">d</span><span class="p">)</span>
+</span><span class='line'>     <span class="p">(</span><span class="nf">parse-stream</span> <span class="nv">d</span><span class="p">))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now some simple tests</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">chr</span> <span class="sc">\a</span><span class="p">)</span> <span class="s">&quot;a&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="sc">\a</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">chr</span> <span class="sc">\b</span><span class="p">)</span> <span class="s">&quot;b&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="sc">\b</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="nv">ws</span> <span class="s">&quot; &quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="sc">\s</span><span class="nv">pace</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="nv">ws</span> <span class="s">&quot;a&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="o">#</span><span class="nv">object</span><span class="p">[</span><span class="nv">ccp.core.ParserError</span> <span class="mi">0</span><span class="nv">x95c543a</span> <span class="s">&quot;expecting whitespace on line 1 col 1&quot;</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Sometimes we need our parser to return a value different from the one that has been parsed.
+Let&rsquo;s define two parser combinators one called <em>return</em> which substitutes a return value with provided one and another
+one called <em>null</em> which just returns nil instead of parse result</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">return</span>
+</span><span class='line'>  <span class="s">&quot;try parsing p and on success return r otherwise return parser error&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="nv">p</span> <span class="nv">r</span><span class="p">]</span>
+</span><span class='line'>      <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">r</span> <span class="nv">e</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">null</span>
+</span><span class='line'>  <span class="s">&quot;try parsing p and on success return nil&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">return</span> <span class="nv">p</span> <span class="nv">nil</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>What if we want to match beginning or end of <strong>ParseStream</strong>. We can do that since our <strong>ParseStream</strong> protocol has
+two methods called <em>start-state?</em> and <em>end-state?</em>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">bos</span>
+</span><span class='line'>  <span class="s">&quot;expect beginning of stream&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">start-state?</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">nil</span> <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="s">&quot;beginning of stream&quot;</span><span class="p">))))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">eos</span>
+</span><span class='line'>  <span class="s">&quot;expect end of stream&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">_</span> <span class="nv">ps</span><span class="p">]</span> <span class="nv">end-state?</span> <span class="nv">ps</span><span class="p">)</span> <span class="s">&quot;end of stream&quot;</span><span class="p">)))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>But what if we want to just generally parse any arbitary data, for example while parsing a <strong>SequenceParseStream</strong>.
+We can do that too. We can even parse data with some particular elem using <em>=</em> and return it as parse result or
+some optionally specified failure message with name of the element we needed our parser to be equal to.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">any-elem</span>
+</span><span class='line'>  <span class="s">&quot;expect any element&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">elem</span>
+</span><span class='line'>  <span class="s">&quot;expect element e named with name, name is used for parse error&quot;</span>
+</span><span class='line'>    <span class="p">[</span><span class="nv">e</span> <span class="o">&amp;</span> <span class="p">{</span><span class="ss">:keys</span> <span class="p">[</span><span class="nv">name</span><span class="p">]}]</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="nf">satisfy</span> <span class="o">#</span><span class="p">(</span><span class="nb">= </span><span class="nv">e</span> <span class="nv">%</span><span class="p">)</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">nil? </span><span class="nv">name</span><span class="p">)</span> <span class="p">(</span><span class="nb">str </span><span class="nv">e</span><span class="p">)</span> <span class="nv">name</span><span class="p">))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can even parse beginning and end of line.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">bol</span>
+</span><span class='line'> <span class="s">&quot;expect beginning of line, returns nil on success&quot;</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">start-state?</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>   <span class="nv">nil</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">c</span> <span class="p">(</span><span class="nf">current-elem</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>    <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">or </span><span class="p">(</span><span class="nb">= </span><span class="nv">c</span> <span class="sc">\n</span><span class="nv">ewline</span><span class="p">)</span> <span class="p">(</span><span class="nb">= </span><span class="nv">c</span> <span class="sc">\r</span><span class="nv">eturn</span><span class="p">))</span>
+</span><span class='line'>     <span class="nv">nil</span>
+</span><span class='line'>     <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="s">&quot;beginning of line&quot;</span><span class="p">))))))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">eol</span>
+</span><span class='line'> <span class="s">&quot;expect end of line, supports windows, unix and mac newline types&quot;</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">rewind</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">e</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>    <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">or </span><span class="p">(</span><span class="nf">end-state?</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nb">= </span><span class="nv">e</span> <span class="sc">\n</span><span class="nv">ewline</span><span class="p">))</span>
+</span><span class='line'>     <span class="sc">\n</span><span class="nv">ewline</span>
+</span><span class='line'>     <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="nv">e</span> <span class="sc">\r</span><span class="nv">eturn</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">st</span> <span class="p">(</span><span class="nf">get-state</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>       <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="nv">e</span> <span class="sc">\n</span><span class="nv">ewline</span><span class="p">)</span> <span class="nv">e</span> <span class="p">(</span><span class="k">do </span><span class="p">(</span><span class="nf">restore-state</span> <span class="nv">ps</span> <span class="nv">st</span><span class="p">)</span> <span class="sc">\n</span><span class="nv">ewline</span><span class="p">)))</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="s">&quot;end of line character&quot;</span><span class="p">)))))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Wait, this all starts remind us about regular expressions, right?! Well ofcourse we can even make a parser that will be able to match some regular expression.
+But we have two limitations here, in order for our regular expression parser to be able to work with standard Java regular expression methods  it needs to be String or any char element based <strong>ParseStream</strong> and it needs to implement <strong>CharSequence</strong> interface.
+So let&rsquo;s define <strong>ParseStreamCharSequenceFactory</strong> protocol and implement <strong>StringParseStreamCharSequence</strong> <em>deftype</em> to extend <strong>StringParseStream</strong> to be able to convert it to <strong>CharSequence</strong> at any time when needed. This functionality will be used for our <em>match</em> parser combinator that will have regular expression as it&rsquo;s input and will return parser that can match that regular expression.
+Lots of code, I know. This is probably the most complicated parser combinator in entire <em>ccp</em> library. I won&rsquo;t start explaining every bit of it and leave that
+to you guys as a self study.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defprotocol </span><span class="nv">ParseStreamCharSequenceFactory</span>
+</span><span class='line'>  <span class="s">&quot;A parse stream char sequence factory protocol&quot;</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">char-sequence</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">deftype </span><span class="nv">StringParseStreamCharSequence</span> <span class="p">[</span><span class="nv">ps</span> <span class="nv">p</span> <span class="nv">l</span><span class="p">]</span>
+</span><span class='line'> <span class="nv">CharSequence</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">charAt</span> <span class="p">[</span><span class="nv">_</span> <span class="nv">i</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">i</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">p</span> <span class="nv">i</span><span class="p">)]</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">or </span><span class="p">(</span><span class="nb">&lt; </span><span class="nv">i</span> <span class="mi">0</span><span class="p">)</span> <span class="p">(</span><span class="nb">&gt;= </span><span class="nv">i</span> <span class="p">(</span><span class="nf">.length</span> <span class="p">(</span><span class="nf">.s</span> <span class="nv">ps</span><span class="p">))))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">throw</span> <span class="p">(</span><span class="nf">IndexOutOfBoundsException.</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">.charAt</span> <span class="p">(</span><span class="nf">.s</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">i</span><span class="p">))))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">length</span> <span class="p">[</span><span class="nv">_</span><span class="p">]</span> <span class="nv">l</span><span class="p">)</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">subSequence</span> <span class="p">[</span><span class="nv">_</span> <span class="nv">s</span> <span class="nv">e</span><span class="p">]</span> <span class="p">(</span><span class="nf">StringParseStreamCharSequence.</span> <span class="nv">ps</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">p</span> <span class="nv">s</span><span class="p">)</span> <span class="p">(</span><span class="nb">- </span><span class="nv">e</span> <span class="nv">s</span><span class="p">)))</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">toString</span> <span class="p">[</span><span class="nv">_</span><span class="p">]</span> <span class="p">(</span><span class="nf">.substring</span> <span class="p">(</span><span class="nf">.s</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">p</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">p</span> <span class="nv">l</span><span class="p">))))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">deftype </span><span class="nv">StringParseStream</span> <span class="p">[</span><span class="o">^</span><span class="ss">:unsynchronized-mutable</span> <span class="nv">p</span> <span class="nv">s</span><span class="p">]</span>
+</span><span class='line'> <span class="nv">....</span>
+</span><span class='line'> <span class="nv">ParseStreamCharSequenceFactory</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">char-sequence</span>
+</span><span class='line'>  <span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">StringParseStreamCharSequence.</span> <span class="nv">ps</span> <span class="p">(</span><span class="nf">get-state</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nb">- </span><span class="p">(</span><span class="nf">.length</span> <span class="p">(</span><span class="nf">.s</span> <span class="nv">ps</span><span class="p">))</span> <span class="p">(</span><span class="nf">get-state</span> <span class="nv">ps</span><span class="p">)))))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">match</span>
+</span><span class='line'> <span class="s">&quot;match regex re, on success returns result of the match&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">re</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">re</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">string? </span><span class="nv">re</span><span class="p">)</span> <span class="p">(</span><span class="nb">re-pattern </span><span class="nv">re</span><span class="p">)</span> <span class="nv">re</span><span class="p">)]</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>           <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">d</span> <span class="p">(</span><span class="nb">re-matches </span><span class="nv">re</span> <span class="p">(</span><span class="nf">char-sequence</span> <span class="nv">ps</span><span class="p">))]</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">if </span><span class="nv">d</span>
+</span><span class='line'>             <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">i</span> <span class="p">(</span><span class="nb">- </span><span class="p">(</span><span class="nf">.length</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">vector? </span><span class="nv">d</span><span class="p">)</span> <span class="p">(</span><span class="nb">first </span><span class="nv">d</span><span class="p">)</span> <span class="nv">d</span><span class="p">))</span> <span class="mi">1</span><span class="p">)]</span>
+</span><span class='line'>              <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">i</span> <span class="mi">0</span><span class="p">)</span> <span class="p">(</span><span class="k">do </span><span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nb">- </span><span class="nv">i</span> <span class="mi">1</span><span class="p">)))</span> <span class="nv">d</span><span class="p">))</span>
+</span><span class='line'>             <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="p">(</span><span class="nb">str </span><span class="nv">re</span><span class="p">))))))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s define another parser combinator. This one we&rsquo;ll call <em>collect</em> and it&rsquo;ll just collect exactly
+<em>n</em> number of elements from parse stream and will return vector containing those elements.
+Note how we are using <a href="http://clojure.org/reference/transients">transient</a> vector as accumulator in our loop/recur.
+Using transient vector is more effective performance-wise as we don&rsquo;t need full power of persistent data structure and instead just want to accumulate result.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">collect</span>
+</span><span class='line'> <span class="s">&quot;collect exactly n elems and return vector containing those elements&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">n</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">cond</span>
+</span><span class='line'>  <span class="p">(</span><span class="nb">&lt; </span><span class="nv">n</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">throw</span> <span class="p">(</span><span class="nf">IllegalArgumentException.</span> <span class="s">&quot;n can&#39;t be negative&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">(</span><span class="nb">= </span><span class="nv">n</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">[])</span>
+</span><span class='line'>  <span class="ss">:else</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">nc</span> <span class="nv">n</span><span class="p">]</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">e</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">n</span> <span class="nv">n</span> <span class="nv">acc</span> <span class="p">(</span><span class="nf">transient</span> <span class="p">[])]</span>
+</span><span class='line'>             <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">nil? </span><span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>              <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="p">(</span><span class="nb">str </span><span class="nv">n</span> <span class="s">&quot; element&quot;</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">n</span> <span class="mi">1</span><span class="p">)</span> <span class="s">&quot;s&quot;</span> <span class="nv">nil</span><span class="p">)))</span>
+</span><span class='line'>              <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="nv">n</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>               <span class="p">(</span><span class="nf">persistent!</span> <span class="p">(</span><span class="nf">conj!</span> <span class="nv">acc</span> <span class="nv">e</span><span class="p">))</span>
+</span><span class='line'>               <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nb">- </span><span class="nv">n</span> <span class="mi">1</span><span class="p">)</span> <span class="p">(</span><span class="nf">conj!</span> <span class="nv">acc</span> <span class="nv">e</span><span class="p">))))))))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can do the same but instead of collecting result just <em>consume</em> it and return nil.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">consume</span>
+</span><span class='line'> <span class="s">&quot;consume exactly n elems and return nil&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">n</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">cond</span>
+</span><span class='line'>  <span class="p">(</span><span class="nb">&lt; </span><span class="nv">n</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">throw</span> <span class="p">(</span><span class="nf">IllegalArgumentException.</span> <span class="s">&quot;n can&#39;t be negative&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">(</span><span class="nb">= </span><span class="nv">n</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="nv">nil</span><span class="p">)</span>
+</span><span class='line'>  <span class="ss">:else</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">nc</span> <span class="nv">n</span><span class="p">]</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">e</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">n</span> <span class="nv">n</span><span class="p">]</span>
+</span><span class='line'>             <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">nil? </span><span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>              <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="p">(</span><span class="nb">str </span><span class="nv">n</span> <span class="s">&quot; element&quot;</span> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&gt; </span><span class="nv">n</span> <span class="mi">1</span><span class="p">)</span> <span class="s">&quot;s&quot;</span> <span class="nv">nil</span><span class="p">)))</span>
+</span><span class='line'>              <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="nv">n</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>               <span class="nv">nil</span>
+</span><span class='line'>               <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nb">- </span><span class="nv">n</span> <span class="mi">1</span><span class="p">))))))))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can even parse exactly some <em>string</em></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">string</span>
+</span><span class='line'> <span class="s">&quot;parse string s&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">s</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">empty?</span> <span class="nv">s</span><span class="p">)</span> <span class="p">(</span><span class="nf">throw</span> <span class="p">(</span><span class="nf">IllegalArgumentException.</span> <span class="s">&quot;parsing string can&#39;t be empty&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">rewind</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">e</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">p</span> <span class="mi">0</span><span class="p">]</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="p">(</span><span class="nf">.charAt</span> <span class="nv">s</span> <span class="nv">p</span><span class="p">)</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>             <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="p">(</span><span class="nb">+ </span><span class="nv">p</span> <span class="mi">1</span><span class="p">)</span> <span class="p">(</span><span class="nf">.length</span> <span class="nv">s</span><span class="p">))</span>
+</span><span class='line'>              <span class="nv">s</span>
+</span><span class='line'>              <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nb">+ </span><span class="nv">p</span> <span class="mi">1</span><span class="p">)))</span>
+</span><span class='line'>             <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="p">(</span><span class="nb">str </span><span class="s">&quot;&#39;&quot;</span> <span class="p">(</span><span class="nf">.charAt</span> <span class="nv">s</span> <span class="nv">p</span><span class="p">)</span> <span class="s">&quot;&#39; from &#39;&quot;</span> <span class="nv">s</span> <span class="s">&quot;&#39; string&quot;</span><span class="p">))))))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>What if we want to parse one or more parsers and return value only of the last one?
+Well we can define a parser combinator that will allow us to do that.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">&gt;&gt;</span>
+</span><span class='line'> <span class="s">&quot;execute parsers sequentually and return result of the last one&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="o">&amp;</span> <span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">loop </span><span class="p">[[</span><span class="nv">h</span> <span class="o">&amp;</span> <span class="nv">t</span><span class="p">]</span> <span class="nv">p</span><span class="p">]</span>
+</span><span class='line'>   <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">h</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">empty?</span> <span class="nv">t</span><span class="p">)</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">recur</span> <span class="nv">t</span><span class="p">))</span>
+</span><span class='line'>    <span class="nv">e</span><span class="p">))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And exactly same but return first parser result instead.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">&lt;&lt;</span>
+</span><span class='line'> <span class="s">&quot;execute parsers sequentually and return result of the first one&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="o">&amp;</span> <span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">parsed</span> <span class="nv">first-elem</span> <span class="p">((</span><span class="nb">first </span><span class="nv">p</span><span class="p">)</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">loop </span><span class="p">[[</span><span class="nv">h</span> <span class="o">&amp;</span> <span class="nv">t</span><span class="p">]</span> <span class="p">(</span><span class="nb">rest </span><span class="nv">p</span><span class="p">)]</span>
+</span><span class='line'>    <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">nil? </span><span class="nv">h</span><span class="p">)</span>
+</span><span class='line'>     <span class="nv">first-elem</span>
+</span><span class='line'>     <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">h</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">recur</span> <span class="nv">t</span><span class="p">)</span> <span class="nv">e</span><span class="p">)))</span>
+</span><span class='line'>   <span class="nv">first-elem</span><span class="p">)))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s define some basic yet very powerful monadic bind <em>>>=</em> parser combinator.
+Note how we apply function to result of the parse result of our parser. We can even have two kinds of
+functions, one with parse stream as second result and one without it. We could have defined our <em>&lt;&lt;</em> and <em>>></em>
+parser combinators using <em>>>=</em> parser combinator but our previously define loop/recur version will work faster and can grow
+infinitely without consuming the stack.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">&gt;&gt;=</span>
+</span><span class='line'> <span class="s">&quot;execute parser and return result of applying f to parsed result and optionally a parse stream&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span> <span class="nv">f</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">= </span><span class="p">(</span><span class="nf">n-args</span> <span class="nv">f</span><span class="p">)</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>   <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span> <span class="nv">e</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">e</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>   <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span> <span class="nv">e</span><span class="p">)</span> <span class="nv">e</span><span class="p">))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This can be used to define a <em>letp</em> macro which is actually a parser combinator too in some sense, well not exactly but close.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defmacro </span><span class="nv">letp</span>
+</span><span class='line'> <span class="s">&quot;binds parser results to variables sequentually, same as let but uses parsers as values&quot;</span>
+</span><span class='line'> <span class="p">[[</span><span class="o">&amp;</span> <span class="nv">parsers</span><span class="p">]</span> <span class="o">&amp;</span> <span class="nv">body</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">or </span><span class="p">(</span><span class="nb">zero? </span><span class="p">(</span><span class="nb">count </span><span class="nv">parsers</span><span class="p">))</span> <span class="p">(</span><span class="nb">not </span><span class="p">(</span><span class="nb">zero? </span><span class="p">(</span><span class="nf">mod</span> <span class="p">(</span><span class="nb">count </span><span class="nv">parsers</span><span class="p">)</span> <span class="mi">2</span><span class="p">))))</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">throw</span> <span class="p">(</span><span class="nf">IllegalArgumentException.</span> <span class="s">&quot;invalid number of parsers&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">let </span><span class="p">[[</span><span class="nv">e</span> <span class="nv">p</span> <span class="o">&amp;</span> <span class="nv">r</span><span class="p">]</span> <span class="nv">parsers</span><span class="p">]</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">nil? </span><span class="nv">r</span><span class="p">)</span>
+</span><span class='line'>    <span class="o">`</span><span class="p">(</span><span class="nf">&gt;&gt;=</span> <span class="o">~</span><span class="nv">p</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="o">~</span><span class="nv">e</span> <span class="nv">ps#</span><span class="p">]</span> <span class="o">~@</span><span class="nv">body</span><span class="p">))</span>
+</span><span class='line'>    <span class="o">`</span><span class="p">(</span><span class="nf">&gt;&gt;=</span> <span class="o">~</span><span class="nv">p</span> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="o">~</span><span class="nv">e</span> <span class="nv">ps#</span><span class="p">]</span> <span class="p">((</span><span class="nf">letp</span> <span class="o">~</span><span class="nv">r</span> <span class="o">~@</span><span class="nv">body</span><span class="p">)</span> <span class="nv">ps#</span><span class="p">)))))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This can be used to manipulate parser results in any way and return result any way we want to.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">letp</span> <span class="p">[</span><span class="nv">a</span> <span class="p">(</span><span class="nf">chr</span> <span class="sc">\a</span><span class="p">)</span> <span class="nv">b</span> <span class="p">(</span><span class="nf">chr</span> <span class="sc">\b</span><span class="p">)]</span> <span class="p">(</span><span class="nb">str </span><span class="nv">a</span> <span class="nv">b</span><span class="p">))</span> <span class="s">&quot;ab&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="s">&quot;ab&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">letp</span> <span class="p">[</span><span class="nv">a</span> <span class="nv">any-char</span> <span class="nv">b</span> <span class="nv">any-char</span><span class="p">]</span> <span class="p">[</span><span class="nv">a</span> <span class="nv">b</span><span class="p">])</span> <span class="s">&quot;ab&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\a</span> <span class="sc">\b</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">letp</span> <span class="p">[</span><span class="nv">a</span> <span class="nv">digit</span> <span class="nv">b</span> <span class="nv">digit</span><span class="p">]</span> <span class="p">(</span><span class="nb">+ </span><span class="p">(</span><span class="nf">read-string</span> <span class="p">(</span><span class="nb">str </span><span class="nv">a</span><span class="p">))</span> <span class="p">(</span><span class="nf">read-string</span> <span class="p">(</span><span class="nb">str </span><span class="nv">b</span><span class="p">))))</span> <span class="s">&quot;13&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="mi">4</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>How about some sequential parser combinator that collects result into a vector.
+This one is kinda similar to <em>collect</em> but applies parsers instead of counting number of elements.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">&lt;*&gt;</span>
+</span><span class='line'> <span class="s">&quot;execute parsers sequentually and return vector of results, fails if one of them fails&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="o">&amp;</span> <span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">empty?</span> <span class="nv">p</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">throw</span> <span class="p">(</span><span class="nf">IllegalArgumentException.</span> <span class="s">&quot;no parsers specified&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">loop </span><span class="p">[[</span><span class="nv">h</span> <span class="o">&amp;</span> <span class="nv">t</span><span class="p">]</span> <span class="nv">p</span> <span class="nv">acc</span> <span class="p">(</span><span class="nf">transient</span> <span class="p">[])]</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">h</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>     <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">empty?</span> <span class="nv">t</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">persistent!</span> <span class="p">(</span><span class="nf">conj!</span> <span class="nv">acc</span> <span class="nv">e</span><span class="p">))</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">recur</span> <span class="nv">t</span> <span class="p">(</span><span class="nf">conj!</span> <span class="nv">acc</span> <span class="nv">e</span><span class="p">)))</span>
+</span><span class='line'>     <span class="nv">e</span><span class="p">)))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can use <em>&lt;*></em> to define <em>&lt;str*></em> and <em>&lt;keyword*></em> parser combinators.
+Those just apply <em>str</em> and <em>keyword</em> functions to parser results.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">&lt;str&gt;</span>
+</span><span class='line'> <span class="s">&quot;parse p and apply str to it&#39;s result&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nb">apply str </span><span class="nv">e</span><span class="p">)</span> <span class="nv">e</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">&lt;str*&gt;</span>
+</span><span class='line'> <span class="s">&quot;execute parsers sequentially and return string of results, fails if one of them fails&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="o">&amp;</span> <span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">&lt;str&gt;</span> <span class="p">(</span><span class="nb">apply </span><span class="nv">&lt;*&gt;</span> <span class="nv">p</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">&lt;keyword&gt;</span>
+</span><span class='line'> <span class="s">&quot;parse p and apply keyword to it&#39;s result&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>   <span class="p">(</span><span class="nf">keyword</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">cond</span>
+</span><span class='line'>     <span class="p">(</span><span class="nb">string? </span><span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>     <span class="nv">e</span>
+</span><span class='line'>     <span class="p">(</span><span class="nf">coll?</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>     <span class="p">(</span><span class="nb">apply str </span><span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>     <span class="ss">:else</span> <span class="p">(</span><span class="nb">str </span><span class="nv">e</span><span class="p">)))</span>
+</span><span class='line'>   <span class="nv">e</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">&lt;keyword*&gt;</span>
+</span><span class='line'> <span class="s">&quot;execute parsers sequentually and return keyword of results, fails if one of them fails&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="o">&amp;</span> <span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">&lt;keyword&gt;</span> <span class="p">(</span><span class="nb">apply </span><span class="nv">&lt;str*&gt;</span> <span class="nv">p</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">&lt;*&gt;</span> <span class="nv">any-char</span> <span class="nv">any-char</span><span class="p">)</span> <span class="s">&quot;ab&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\a</span> <span class="sc">\b</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">&lt;str*&gt;</span> <span class="nv">any-char</span> <span class="nv">any-char</span><span class="p">)</span> <span class="s">&quot;ab&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="s">&quot;ab&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">&lt;keyword*&gt;</span> <span class="nv">any-char</span> <span class="nv">any-char</span><span class="p">)</span> <span class="s">&quot;ab&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="ss">:ab</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s define yet another crucial alternatives <em>&lt;|></em> parser combinator.
+This takes any number of parsers as input, and when parsing, tries each one of them and stops when
+either all of them fail or one of them consumes input while failing.
+The code is quite complicated as we need to deal with generating error message as well as checking
+state of parse stream each time we are trying to parse some data.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">&lt;</span><span class="err">|</span><span class="nv">&gt;</span>
+</span><span class='line'> <span class="s">&quot;execute parsers sequentually and return first successful result, fails if one of them fails while consuming input or all of them fail&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="o">&amp;</span> <span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">empty?</span> <span class="nv">p</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">throw</span> <span class="p">(</span><span class="nf">IllegalArgumentException.</span> <span class="s">&quot;no parsers specified&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">loop </span><span class="p">[[</span><span class="nv">h</span> <span class="o">&amp;</span> <span class="nv">t</span><span class="p">]</span> <span class="nv">p</span> <span class="nv">ms</span> <span class="p">(</span><span class="nf">transient</span> <span class="p">[])]</span>
+</span><span class='line'>    <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">st</span> <span class="p">(</span><span class="nf">get-state</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">h</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>     <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">parser-error?</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">state-changed?</span> <span class="nv">ps</span> <span class="nv">st</span><span class="p">)</span>
+</span><span class='line'>       <span class="nv">e</span>
+</span><span class='line'>       <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">empty?</span> <span class="nv">t</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">ms</span> <span class="p">(</span><span class="nf">persistent!</span> <span class="p">(</span><span class="nf">conj!</span> <span class="nv">ms</span> <span class="p">(</span><span class="nf">parser-error-message</span> <span class="nv">e</span><span class="p">)))</span>
+</span><span class='line'>         <span class="nv">st</span> <span class="p">(</span><span class="nf">get-state</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>         <span class="nv">_</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>         <span class="nv">pe</span> <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="p">(</span><span class="nf">str/join</span> <span class="s">&quot; or &quot;</span> <span class="nv">ms</span><span class="p">))</span>
+</span><span class='line'>         <span class="nv">_</span> <span class="p">(</span><span class="nf">restore-state</span> <span class="nv">ps</span> <span class="nv">st</span><span class="p">)]</span>
+</span><span class='line'>         <span class="nv">pe</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">recur</span> <span class="nv">t</span> <span class="p">(</span><span class="nf">conj!</span> <span class="nv">ms</span> <span class="p">(</span><span class="nf">parser-error-message</span> <span class="nv">e</span><span class="p">)))))</span>
+</span><span class='line'>      <span class="nv">e</span><span class="p">))))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Speaking of parser failures what if we want to get a failure message out of parser without actually applying parser to a parse stream.
+Well we have some edge cases but still we can do that with a really simple trick by making a parser combinator that can make any parser <em>fail</em>.
+We&rsquo;ll just define some empty string stream and will use it to apply parser to it and return it&rsquo;s error message as if it was applied to parse
+stream itself. We can then have <em>fail-message</em> function that will return the failure message itself.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="k">def </span><span class="nv">empty-stream</span> <span class="p">(</span><span class="nf">parse-stream</span> <span class="s">&quot;&quot;</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">fail</span>
+</span><span class='line'> <span class="s">&quot;fail p, parser p must not accept nil otherwise failure message won&#39;t be correct&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">restore</span> <span class="p">(</span><span class="nf">cond</span>
+</span><span class='line'>           <span class="p">(</span><span class="nb">= </span><span class="nv">p</span> <span class="nv">bos</span><span class="p">)</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="s">&quot;beginning of stream&quot;</span><span class="p">))</span>
+</span><span class='line'>           <span class="p">(</span><span class="nb">= </span><span class="nv">p</span> <span class="nv">eos</span><span class="p">)</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="s">&quot;end of stream&quot;</span><span class="p">))</span>
+</span><span class='line'>           <span class="p">(</span><span class="nb">= </span><span class="nv">p</span> <span class="nv">any-elem</span><span class="p">)</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="s">&quot;any element&quot;</span><span class="p">))</span>
+</span><span class='line'>           <span class="ss">:else</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>            <span class="p">(</span><span class="nf">next-elem</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">empty-stream</span><span class="p">)</span>
+</span><span class='line'>             <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="p">(</span><span class="nb">str </span><span class="nv">e</span><span class="p">))</span>
+</span><span class='line'>             <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="p">(</span><span class="nf">parser-error-message</span> <span class="nv">e</span><span class="p">))))</span>
+</span><span class='line'>          <span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">fail-message</span>
+</span><span class='line'> <span class="s">&quot;makes p fail and returns failure message, note: not a parser function&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="nf">parser-error-message</span> <span class="p">((</span><span class="nf">fail</span> <span class="nv">p</span><span class="p">)</span> <span class="nv">empty-stream</span><span class="p">)))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now that we have <em>fail-message</em> function we can define <em>no</em> parser combinator that will make
+any parser fail in case it succeeds and will succeed in case of failure.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">no</span>
+</span><span class='line'> <span class="s">&quot;if p fails succeds with nil, otherwise fails&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">parser-error</span> <span class="nv">ps</span> <span class="p">(</span><span class="nb">str </span><span class="s">&quot;not &quot;</span> <span class="p">(</span><span class="nf">fail-message</span> <span class="nv">p</span><span class="p">)))</span> <span class="nv">nil</span><span class="p">)))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Sometimes we want some optional value so why note define an <em>option</em> parser combinator too.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">option</span>
+</span><span class='line'> <span class="s">&quot;try p, if it fails without consuming any input return r, otherwise return value returned by p&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span> <span class="nv">r</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span> <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">st</span> <span class="p">(</span><span class="nf">get-state</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>           <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">parser-error?</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>            <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">state-changed?</span> <span class="nv">ps</span> <span class="nv">st</span><span class="p">)</span> <span class="nv">e</span> <span class="nv">r</span><span class="p">)</span>
+</span><span class='line'>            <span class="nv">e</span><span class="p">))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>What if we want to repetitively parse some value one or more times and return vector of results.
+We can do that with <em>many</em> and <em>many1</em> parser combinators.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">many</span>
+</span><span class='line'> <span class="s">&quot;try p, 0 or more times and return result&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span> <span class="nv">acc</span> <span class="p">(</span><span class="nf">transient</span> <span class="p">[])]</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">parser-error?</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">persistent!</span> <span class="nv">acc</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nf">conj!</span> <span class="nv">acc</span> <span class="nv">e</span><span class="p">))))))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">many1</span>
+</span><span class='line'> <span class="s">&quot;try p, 1 or more times and return result&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>   <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">parser-error?</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>    <span class="nv">e</span>
+</span><span class='line'>    <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">acc</span> <span class="p">(</span><span class="nf">transient</span> <span class="p">[</span><span class="nv">e</span><span class="p">])</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)]</span>
+</span><span class='line'>     <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">parser-error?</span> <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">persistent!</span> <span class="nv">acc</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nf">conj!</span> <span class="nv">acc</span> <span class="nv">e</span><span class="p">)</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">))))))))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Our next parser combinator is quite complex so I&rsquo;ll try to explain it in more detail.
+Sometimes when parsing programming languages or any symbolic expressions we need our operators to have
+different precedence based on some predefined rules that we have. For example in math expression like 1+2*3 will
+be interpreted as (+ 1 (* 2 3)) since * operator has higher precedence compared to + operator.
+In order parse this kind of expressions we&rsquo;ll define two special parser combinators called  <em>op</em> and <em>op-expr</em> that need to be used with each other.
+<em>op</em> parser combinator converts any parser that can parse some operator into a parser that returns parsed operator and it&rsquo;s precedence value.
+This value is then used by <em>op-expr</em> in order return expression in exact precedence order as define by op parsers. The code is kinda complex and I&rsquo;ll live it
+as exercise for you to study and understand.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">op</span>
+</span><span class='line'> <span class="s">&quot;return operator parser p with precedence o&quot;</span>
+</span><span class='line'> <span class="p">[</span><span class="nv">p</span> <span class="nv">o</span><span class="p">]</span>
+</span><span class='line'> <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span> <span class="o">`</span><span class="p">(</span><span class="o">~</span><span class="nv">o</span> <span class="o">~</span><span class="nv">e</span><span class="p">)</span> <span class="nv">e</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="kd">defn </span><span class="nv">op-expr</span>
+</span><span class='line'> <span class="s">&quot;parse parser p expression and then optionally parse any of operator parser from ops sequence followed by another p expression and return expressions ordered by operator precedence with f applied to each expression&quot;</span>
+</span><span class='line'> <span class="p">([</span><span class="nv">p</span> <span class="nv">ops</span><span class="p">]</span> <span class="p">(</span><span class="nf">op-expr</span> <span class="nv">p</span> <span class="nv">ops</span> <span class="nv">identity</span><span class="p">))</span>
+</span><span class='line'> <span class="p">([</span><span class="nv">p</span> <span class="nv">ops</span> <span class="nv">f</span><span class="p">]</span>
+</span><span class='line'>  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">ops</span> <span class="p">(</span><span class="nb">apply </span><span class="nv">&lt;</span><span class="err">|</span><span class="nb">&gt; </span><span class="nv">ops</span><span class="p">)]</span>
+</span><span class='line'>   <span class="p">(</span><span class="nf">letfn</span> <span class="p">[(</span><span class="nf">op&gt;=</span> <span class="p">[</span><span class="nv">o1</span> <span class="nv">o2</span><span class="p">]</span> <span class="p">(</span><span class="nb">&gt;= </span><span class="p">(</span><span class="nb">first </span><span class="nv">o1</span><span class="p">)</span> <span class="p">(</span><span class="nb">first </span><span class="nv">o2</span><span class="p">)))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">exps</span> <span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>     <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">acc</span> <span class="p">(</span><span class="nf">transient</span> <span class="p">[</span><span class="nv">e</span><span class="p">])]</span>
+</span><span class='line'>       <span class="p">(</span><span class="nf">parsed</span> <span class="nv">o</span> <span class="p">(</span><span class="nf">ops</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">parsed</span> <span class="nv">e</span> <span class="p">(</span><span class="nf">p</span> <span class="nv">ps</span><span class="p">)</span>
+</span><span class='line'>         <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nf">conj!</span> <span class="p">(</span><span class="nf">conj!</span> <span class="nv">acc</span> <span class="nv">o</span><span class="p">)</span> <span class="nv">e</span><span class="p">))</span>
+</span><span class='line'>         <span class="nv">e</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">persistent!</span> <span class="nv">acc</span><span class="p">)))</span>
+</span><span class='line'>      <span class="nv">e</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">(</span><span class="nf">reduce-exps</span> <span class="p">[</span><span class="nv">es</span><span class="p">]</span>
+</span><span class='line'>     <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">es</span> <span class="nv">es</span> <span class="nv">acc</span> <span class="p">[]]</span>
+</span><span class='line'>      <span class="p">(</span><span class="nf">cond</span>
+</span><span class='line'>       <span class="p">(</span><span class="nb">&gt;= </span><span class="p">(</span><span class="nb">count </span><span class="nv">es</span><span class="p">)</span> <span class="mi">5</span><span class="p">)</span>
+</span><span class='line'>       <span class="p">(</span><span class="k">let </span><span class="p">[[</span><span class="nv">a</span> <span class="nv">o1</span> <span class="nv">b</span> <span class="nv">o2</span> <span class="nv">c</span> <span class="o">&amp;</span> <span class="nv">d</span><span class="p">]</span> <span class="nv">es</span><span class="p">]</span>
+</span><span class='line'>        <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nf">op&gt;=</span> <span class="nv">o1</span> <span class="nv">o2</span><span class="p">)</span>
+</span><span class='line'>         <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nb">into </span><span class="p">[(</span><span class="nf">f</span> <span class="o">`</span><span class="p">(</span><span class="o">~</span><span class="p">(</span><span class="nb">second </span><span class="nv">o1</span><span class="p">)</span> <span class="o">~</span><span class="nv">a</span> <span class="o">~</span><span class="nv">b</span><span class="p">))</span> <span class="nv">o2</span> <span class="nv">c</span><span class="p">]</span> <span class="nv">d</span><span class="p">)</span> <span class="nv">acc</span><span class="p">)</span>
+</span><span class='line'>         <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nb">into </span><span class="p">[</span><span class="nv">b</span> <span class="nv">o2</span> <span class="nv">c</span><span class="p">]</span> <span class="nv">d</span><span class="p">)</span> <span class="p">(</span><span class="nb">into </span><span class="nv">acc</span> <span class="p">[</span><span class="nv">a</span> <span class="nv">o1</span><span class="p">]))))</span>
+</span><span class='line'>       <span class="p">(</span><span class="nb">= </span><span class="p">(</span><span class="nb">count </span><span class="nv">es</span><span class="p">)</span> <span class="mi">3</span><span class="p">)</span>
+</span><span class='line'>       <span class="p">(</span><span class="k">let </span><span class="p">[[</span><span class="nv">a</span> <span class="nv">o</span> <span class="nv">b</span><span class="p">]</span> <span class="nv">es</span><span class="p">]</span> <span class="p">(</span><span class="nb">into </span><span class="nv">acc</span> <span class="p">[(</span><span class="nf">f</span> <span class="o">`</span><span class="p">(</span><span class="o">~</span><span class="p">(</span><span class="nb">second </span><span class="nv">o</span><span class="p">)</span> <span class="o">~</span><span class="nv">a</span> <span class="o">~</span><span class="nv">b</span><span class="p">))]))</span>
+</span><span class='line'>       <span class="ss">:else</span> <span class="p">(</span><span class="nb">into </span><span class="nv">acc</span> <span class="nv">es</span><span class="p">))))</span>
+</span><span class='line'>        <span class="p">(</span><span class="nf">reduce-while</span> <span class="p">[</span><span class="nv">es</span><span class="p">]</span>
+</span><span class='line'>         <span class="p">(</span><span class="k">loop </span><span class="p">[</span><span class="nv">es</span> <span class="p">(</span><span class="nf">reduce-exps</span> <span class="nv">es</span><span class="p">)]</span>
+</span><span class='line'>          <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">&gt; </span><span class="p">(</span><span class="nb">count </span><span class="nv">es</span><span class="p">)</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>           <span class="p">(</span><span class="nf">recur</span> <span class="p">(</span><span class="nf">reduce-exps</span> <span class="nv">es</span><span class="p">))</span>
+</span><span class='line'>           <span class="nv">es</span><span class="p">)))</span>
+</span><span class='line'>        <span class="p">]</span>
+</span><span class='line'>        <span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">ps</span><span class="p">]</span>
+</span><span class='line'>         <span class="p">(</span><span class="nf">parsed</span> <span class="nv">es</span> <span class="p">(</span><span class="nf">exps</span> <span class="nv">ps</span><span class="p">)</span> <span class="p">(</span><span class="nb">first </span><span class="p">(</span><span class="nf">reduce-while</span> <span class="nv">es</span><span class="p">))</span> <span class="nv">es</span><span class="p">))))))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">op-expr</span> <span class="nv">any-char</span> <span class="p">[(</span><span class="nf">op</span> <span class="p">(</span><span class="nf">chr</span> <span class="sc">\+</span><span class="p">)</span> <span class="mi">1</span><span class="p">)</span> <span class="p">(</span><span class="nf">op</span> <span class="p">(</span><span class="nf">chr</span> <span class="sc">\*</span><span class="p">)</span> <span class="mi">2</span><span class="p">)])</span> <span class="s">&quot;a+b+c&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">(</span><span class="sc">\+</span> <span class="p">(</span><span class="sc">\+</span> <span class="sc">\a</span> <span class="sc">\b</span><span class="p">)</span> <span class="sc">\c</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">op-expr</span> <span class="nv">any-char</span> <span class="p">[(</span><span class="nf">op</span> <span class="p">(</span><span class="nf">chr</span> <span class="sc">\+</span><span class="p">)</span> <span class="mi">1</span><span class="p">)</span> <span class="p">(</span><span class="nf">op</span> <span class="p">(</span><span class="nf">chr</span> <span class="sc">\*</span><span class="p">)</span> <span class="mi">2</span><span class="p">)])</span> <span class="s">&quot;a+b*c&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">(</span><span class="sc">\+</span> <span class="sc">\a</span> <span class="p">(</span><span class="sc">\*</span> <span class="sc">\b</span> <span class="sc">\c</span><span class="p">))</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">op-expr</span> <span class="nv">any-char</span> <span class="p">[(</span><span class="nf">op</span> <span class="p">(</span><span class="nf">chr</span> <span class="sc">\+</span><span class="p">)</span> <span class="mi">1</span><span class="p">)</span> <span class="p">(</span><span class="nf">op</span> <span class="p">(</span><span class="nf">chr</span> <span class="sc">\*</span><span class="p">)</span> <span class="mi">2</span><span class="p">)])</span> <span class="s">&quot;a+d*c+e&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">(</span><span class="sc">\+</span> <span class="sc">\a</span> <span class="p">(</span><span class="sc">\+</span> <span class="p">(</span><span class="sc">\*</span> <span class="sc">\d</span> <span class="sc">\c</span><span class="p">)</span> <span class="sc">\e</span><span class="p">))</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I can go on with defining this parsers but this will make me only tired and this post only longer and hard to read so instead I&rsquo;ll just stop and
+show you guys something really awesome. This is <em>exp</em> parser combinator that can generate parsers from a simple Parser Expression Language inspired
+by <a href="https://en.wikipedia.org/wiki/Parsing_expression_grammar">Parsing Expression Grammar</a> and Regular Expressions. I won&rsquo;t describe it as it&rsquo;s
+still work-in-progress and might change in the future. Instead I&rsquo;ll show you some examples of using it.
+Those interested in source code  should look in git repo exp.clj file also note that what you might see there is quite ugly and complex but I hope to improve
+it in the future.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+</pre></td><td class='code'><pre><code class='clojure'><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\a</span> <span class="sc">\b</span> <span class="sc">\c</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;&#39;abc&#39;&quot;</span><span class="p">)</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="s">&quot;abc&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;a?&quot;</span><span class="p">)</span> <span class="s">&quot;b&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="nv">nil</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;a*&quot;</span><span class="p">)</span> <span class="s">&quot;aaa&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\a</span> <span class="sc">\a</span> <span class="sc">\a</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;a{2,3}&quot;</span><span class="p">)</span> <span class="s">&quot;aaaa&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\a</span> <span class="sc">\a</span> <span class="sc">\a</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;a?b&quot;</span><span class="p">)</span> <span class="s">&quot;b&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="nv">nil</span> <span class="sc">\b</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;~a?b&quot;</span><span class="p">)</span> <span class="s">&quot;b&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="sc">\b</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;~a?bc&quot;</span><span class="p">)</span> <span class="s">&quot;bc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\b</span> <span class="sc">\c</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;/[abc]*/&quot;</span><span class="p">)</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="s">&quot;abc&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;(abc)&quot;</span><span class="p">)</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\a</span> <span class="sc">\b</span> <span class="sc">\c</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;(abc)&lt;0&gt;&quot;</span><span class="p">)</span> <span class="s">&quot;abcabc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[[</span><span class="sc">\a</span> <span class="sc">\b</span> <span class="sc">\c</span><span class="p">]</span> <span class="p">[</span><span class="sc">\a</span> <span class="sc">\b</span> <span class="sc">\c</span><span class="p">]]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;\&quot;(abc)&quot;</span><span class="p">)</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="s">&quot;abc&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;:(abc)&quot;</span><span class="p">)</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="ss">:abc</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;[ab]*&quot;</span><span class="p">)</span> <span class="s">&quot;abbaaba&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\a</span> <span class="sc">\b</span> <span class="sc">\b</span> <span class="sc">\a</span> <span class="sc">\a</span> <span class="sc">\b</span> <span class="sc">\a</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;___&quot;</span><span class="p">)</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="nv">nil</span> <span class="nv">nil</span> <span class="nv">nil</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;__\\_&quot;</span><span class="p">)</span> <span class="s">&quot;ab_&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="nv">nil</span> <span class="nv">nil</span> <span class="sc">\_</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;\\s&quot;</span><span class="p">)</span> <span class="s">&quot; &quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="sc">\s</span><span class="nv">pace</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;\\w&quot;</span><span class="p">)</span> <span class="s">&quot;a&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="sc">\a</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;\\d&quot;</span><span class="p">)</span> <span class="s">&quot;9&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="sc">\9</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;(a(bc))&quot;</span><span class="p">)</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\a</span> <span class="p">[</span><span class="sc">\b</span> <span class="sc">\c</span><span class="p">]]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;:#(a(bc))&quot;</span><span class="p">)</span> <span class="s">&quot;abc&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="ss">:abc</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;\\w\\a[a\\_]&quot;</span><span class="p">)</span> <span class="s">&quot;ab_&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[</span><span class="sc">\a</span> <span class="sc">\b</span> <span class="sc">\_</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;([ab]{2})&lt;a&gt;&quot;</span> <span class="p">{</span><span class="ss">:a</span> <span class="p">(</span><span class="nf">chr</span> <span class="sc">\a</span><span class="p">)})</span> <span class="s">&quot;abab&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[[</span><span class="sc">\a</span> <span class="sc">\b</span><span class="p">]</span> <span class="sc">\a</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">(</span><span class="nb">parse </span><span class="p">(</span><span class="nf">exp</span> <span class="s">&quot;([ab]{2})&lt;a&gt;&quot;</span> <span class="p">{</span><span class="ss">:a</span> <span class="s">&quot;ab&quot;</span><span class="p">})</span> <span class="s">&quot;baab&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="nb">-&gt; </span><span class="p">[[</span><span class="sc">\b</span> <span class="sc">\a</span><span class="p">]</span> <span class="p">[</span><span class="sc">\a</span> <span class="sc">\b</span><span class="p">]]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That&rsquo;s it folks, we&rsquo;ve defined a clean, simple and yet beautiful parser combinator library that is easy to grasp. Happy parsing!</p>
+
+<p><img src="http://i.imgur.com/fgIohxm.png" alt="Piano &amp; Violin" /></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Dmitry Geurkov</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-04-11T23:23:41+04:00" pubdate data-updated="true">Apr 11<span>th</span>, 2016</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/clojure/'>clojure</a>, <a class='category' href='/blog/categories/lisp/'>lisp</a>, <a class='category' href='/blog/categories/parser/'>parser</a>, <a class='category' href='/blog/categories/parser-combinator/'>parser combinator</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure/" data-via="" data-counturl="http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/09/06/of-all-the-garbage-in-the-world/" title="Previous Post: Of All The Garbage in The World">&laquo; Of All The Garbage in The World</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>About Me</h1>
+  <a href="/about"><img src="/images/me.jpg"></a>
+  <p>
+  I'm software developer, functional programming enthusiast 
+  and open source evangelist from <a href="https://en.wikipedia.org/wiki/Tbilisi">Tbilisi, Georgia</a>
+  living in <a href="https://en.wikipedia.org/wiki/Kiev">Kiev, Ukraine</a>
+  </p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2016/04/11/writing-parser-combinator-library-in-clojure/">Writing Parser Combinator Library in Clojure</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/09/06/of-all-the-garbage-in-the-world/">Of All The Garbage in The World</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Lifting Shadows off a Memory Allocation</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/01/25/write-you-a-monad-for-no-particular-reason-at-all/">Write you a Monad for no particular reason at all!</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/">Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc</a>
+      </li>
+    
+  </ul>
+</section>
+<section>
+        <a class="twitter-timeline"  href="https://twitter.com/dgeurkov"  data-widget-id="442633732726349824">Tweets by @dgeurkov</a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/troydm">@troydm</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'troydm',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2016 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'dgeurkov';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure/';
+        var disqus_url = 'http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

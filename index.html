@@ -9,7 +9,7 @@
   <meta name="author" content="Dmitry Geurkov">
 
   
-  <meta name="description" content="TL;DR Writing tri-color (actually 4-color) generational garbage collector in C Previously we&rsquo;ve talked about manual memory allocation and &hellip;">
+  <meta name="description" content="TL;DR Writing parser combinator library in Clojure from scratch Recently I&rsquo;ve had an fortunate opportunity to participate in a commercial &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -73,6 +73,55 @@
       
   <header>
     
+      <h1 class="entry-title"><a href="/blog/2016/04/11/writing-parser-combinator-library-in-clojure/">Writing Parser Combinator Library in Clojure</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-04-11T23:23:41+04:00" pubdate data-updated="true">Apr 11<span>th</span>, 2016</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>TL;DR Writing parser combinator library in Clojure from scratch</p>
+
+<p>Recently I&rsquo;ve had an fortunate opportunity to participate in a commercial project that was heavy on parsing and I&rsquo;ve decided to use <a href="http://clojure.org/">Clojure</a> as my main tool for doing it.
+As you might all know <strong>Clojure</strong> is not new to the game and is quite mature functional programming language with a hidden power of <a href="https://en.wikipedia.org/wiki/Lisp_%28programming_language%29">Lisp</a>. One of the distinct features of <strong>Clojure</strong> which I personally adore is nrepl and <a href="https://en.wikipedia.org/wiki/Interactive_programming">Interactive Programming</a> incremental development style which it cultivates. This is by no means something new, <a href="https://en.wikipedia.org/wiki/Common_Lisp">Common Lisp</a> has it via <em>slime/swank</em>, some of <a href="https://en.wikipedia.org/wiki/Scheme_%28programming_language%29">Scheme</a> implementations have <em>geiser</em> support and almost all Smalltalk variants could be considered as full interactive programming environments, one notable example being <a href="http://pharo.org/">Pharo</a>.
+There are some more specialized interactive programming environments like <a href="https://processing.org/">Processing</a> and <a href="https://supercollider.github.io/">SuperCollider</a> which deal with either sound or visual or even both but today we&rsquo;ll be talking about parsing and all things related instead.
+Before I&rsquo;ll start explaining what we are actually trying to build I would like to introduce you to a really nice open source library that I&rsquo;ve successfully used in a commercial project I&rsquo;ve mentioned before, called <a href="https://github.com/blancas/kern">kern</a>. But as all things good there is always some value in trying to build your own even better, at least for me it was an insightful journey. So yeah as title says we&rsquo;ll be building parser combinator library in <strong>Clojure</strong> just to learn a thing or two but solely just for fun. The full source for impatient ones is in my <a href="https://github.com/troydm/ccp/">ccp</a> repo.
+So let&rsquo;s get started then.</p>
+
+<p><img src="http://i.imgur.com/JG55prH.png" alt="Violin Loli" /></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/04/11/writing-parser-combinator-library-in-clojure/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
       <h1 class="entry-title"><a href="/blog/2015/09/06/of-all-the-garbage-in-the-world/">Of All the Garbage in the World</a></h1>
     
     
@@ -96,7 +145,7 @@
   </header>
 
 
-  <div class="entry-content"><p>TL;DR <em>Writing tri-color (actually 4-color) generational garbage collector in C</em></p>
+  <div class="entry-content"><p>TL;DR <em>Writing tri-color (actually 4-color) incremental generational garbage collector in C</em></p>
 
 <p><a href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Previously</a> we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
 Now let&rsquo;s talk about automatic memory allocation, more specifically about <a href="https://en.wikipedia.org/wiki/Garbage_collection_%28computer_science%29">Garbage Collection</a>.
@@ -105,8 +154,6 @@ memory at the moment it&rsquo;s not needed anymore. However determining when mem
 And here is where <em>Garbage Collection</em> comes into a play. Simply speaking <em>Garbage Collection</em> is an algorithm that checks entire memory of an application for regions that aren&rsquo;t referenced anywhere inside application by other memory regions and deallocates these regions because they aren&rsquo;t needed anymore.</p>
 
 <p><img src="http://i.imgur.com/v5Czgfd.png" alt="Space Dandy" /></p>
-
-<p><em>Garbage Collection</em> was invented by <a href="https://en.wikipedia.org/wiki/John_McCarthy_%28computer_scientist%29">John McCarthy</a> back in 1959 for <a href="https://en.wikipedia.org/wiki/Lisp_%28programming_language%29">Lisp</a> and is still one of the hottest evolving topics in Computer Science nowadays, especially with <a href="https://en.wikipedia.org/wiki/Java_%28software_platform%29">Java</a>&rsquo;s GC becoming more famous with tons of blows and whistles which can be tuned to practically any application memory usage scenario. There are also alternative models to automatic memory handling such as <a href="https://en.wikipedia.org/wiki/NewLISP">newLisp</a>&rsquo;s ORO, <a href="https://en.wikipedia.org/wiki/Rust_%28programming_language%29">Rust</a>&rsquo;s ownership based life cycle management and <a href="https://en.wikipedia.org/wiki/Objective-C">Objective-C</a>&rsquo;s ARC but we won&rsquo;t be talking about those. The cost of checking entire memory region is not a cheap one so people realized ways to make it more reasonable and thus nowadays we have various types of <em>Garbage Collection</em> algorithms. There are tracing garbage collectors and reference counting ones, copying (moving) and non-copying (non-moving) ones, incremental and non-incremental, generational, concurrent, parallel and real-time ones. To learn more about all those types of <em>Garbage Collectors</em> I suggest you try reading <a href="http://www.amazon.com/Garbage-Collection-Handbook-Management-Algorithms/dp/1420082795/">The Garbage Collection Handbook</a> which is a fundamental must read handbook for all those interested in the topic. But for rest of you lazy bunch let&rsquo;s start collecting all the garbage in the world by writing one garbage collector ourselves.</p>
 
 </div>
   
@@ -550,6 +597,10 @@ So if you don&rsquo;t have one then you are behind of times</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2016/04/11/writing-parser-combinator-library-in-clojure/">Writing Parser Combinator Library in Clojure</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/09/06/of-all-the-garbage-in-the-world/">Of All The Garbage in The World</a>
       </li>
     
@@ -563,10 +614,6 @@ So if you don&rsquo;t have one then you are behind of times</p>
     
       <li class="post">
         <a href="/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/">Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a>
       </li>
     
   </ul>
@@ -615,7 +662,7 @@ So if you don&rsquo;t have one then you are behind of times</p>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2015 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
+  Copyright &copy; 2016 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

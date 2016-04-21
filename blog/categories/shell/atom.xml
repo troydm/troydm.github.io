@@ -4,7 +4,7 @@
   <title><![CDATA[Category: shell | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/shell/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2015-11-08T03:44:50+04:00</updated>
+  <updated>2016-04-22T01:49:39+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -328,7 +328,7 @@ That is why I called this bot a potentially unsafe. If anyone can find any secur
 First step is to register your bot&rsquo;s nick with <a href="https://blog.freenode.net/2007/03/nickserv-is-your-friend/">NickServ</a>.
 Choose a nickname for your bot and start it up. Ask your bot to register with NickServ by private messaging him on IRC.
 <div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ REGISTER nickservpass &lt;a href="&#x6d;&#x61;&#105;&#108;&#116;&#x6f;&#58;&#101;&#x6d;&#97;&#x69;&#x6c;&#64;&#97;&#x64;&#100;&#x72;&#x65;&#x73;&#115;&#x2e;&#99;&#x6f;&#109;">&#101;&#109;&#97;&#105;&#x6c;&#x40;&#97;&#100;&#100;&#114;&#101;&#115;&#115;&#46;&#x63;&#x6f;&#x6d;&lt;/a></span></code></pre></td></tr></table></div></figure></notextile></div>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ REGISTER nickservpass &lt;a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#x65;&#109;&#97;&#x69;&#108;&#x40;&#97;&#x64;&#100;&#x72;&#101;&#115;&#115;&#46;&#x63;&#x6f;&#109;">&#101;&#109;&#x61;&#105;&#x6c;&#64;&#x61;&#x64;&#100;&#114;&#101;&#x73;&#115;&#46;&#x63;&#111;&#x6d;&lt;/a></span></code></pre></td></tr></table></div></figure></notextile></div>
 Shortly you&rsquo;ll receive an email verification that will include verification code, privately message your bot again to verify your registration
 <div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 </pre></td><td class='code'><pre><code class=''><span class='line'>/msg botnick msg NickServ VERIFY REGISTER botnick verificationcode</span></code></pre></td></tr></table></div></figure></notextile></div>

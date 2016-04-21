@@ -9,7 +9,7 @@
   <meta name="author" content="Dmitry Geurkov">
 
   
-  <meta name="description" content="TL;DR Writing tri-color (actually 4-color) generational garbage collector in C Previously we&rsquo;ve talked about manual memory allocation and &hellip;">
+  <meta name="description" content="TL;DR Writing tri-color (actually 4-color) incremental generational garbage collector in C Previously we&rsquo;ve talked about manual memory &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -93,7 +93,7 @@
   </header>
 
 
-<div class="entry-content"><p>TL;DR <em>Writing tri-color (actually 4-color) generational garbage collector in C</em></p>
+<div class="entry-content"><p>TL;DR <em>Writing tri-color (actually 4-color) incremental generational garbage collector in C</em></p>
 
 <p><a href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Previously</a> we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
 Now let&rsquo;s talk about automatic memory allocation, more specifically about <a href="https://en.wikipedia.org/wiki/Garbage_collection_%28computer_science%29">Garbage Collection</a>.
@@ -103,10 +103,10 @@ And here is where <em>Garbage Collection</em> comes into a play. Simply speaking
 
 <p><img src="http://i.imgur.com/v5Czgfd.png" alt="Space Dandy" /></p>
 
-<p><em>Garbage Collection</em> was invented by <a href="https://en.wikipedia.org/wiki/John_McCarthy_%28computer_scientist%29">John McCarthy</a> back in 1959 for <a href="https://en.wikipedia.org/wiki/Lisp_%28programming_language%29">Lisp</a> and is still one of the hottest evolving topics in Computer Science nowadays, especially with <a href="https://en.wikipedia.org/wiki/Java_%28software_platform%29">Java</a>&rsquo;s GC becoming more famous with tons of blows and whistles which can be tuned to practically any application memory usage scenario. There are also alternative models to automatic memory handling such as <a href="https://en.wikipedia.org/wiki/NewLISP">newLisp</a>&rsquo;s ORO, <a href="https://en.wikipedia.org/wiki/Rust_%28programming_language%29">Rust</a>&rsquo;s ownership based life cycle management and <a href="https://en.wikipedia.org/wiki/Objective-C">Objective-C</a>&rsquo;s ARC but we won&rsquo;t be talking about those. The cost of checking entire memory region is not a cheap one so people realized ways to make it more reasonable and thus nowadays we have various types of <em>Garbage Collection</em> algorithms. There are tracing garbage collectors and reference counting ones, copying (moving) and non-copying (non-moving) ones, incremental and non-incremental, generational, concurrent, parallel and real-time ones. To learn more about all those types of <em>Garbage Collectors</em> I suggest you try reading <a href="http://www.amazon.com/Garbage-Collection-Handbook-Management-Algorithms/dp/1420082795/">The Garbage Collection Handbook</a> which is a fundamental must read handbook for all those interested in the topic. But for rest of you lazy bunch let&rsquo;s start collecting all the garbage in the world by writing one garbage collector ourselves.</p>
-
 <!--more-->
 
+
+<p><em>Garbage Collection</em> was invented by <a href="https://en.wikipedia.org/wiki/John_McCarthy_%28computer_scientist%29">John McCarthy</a> back in 1959 for <a href="https://en.wikipedia.org/wiki/Lisp_%28programming_language%29">Lisp</a> and is still one of the hottest evolving topics in Computer Science nowadays, especially with <a href="https://en.wikipedia.org/wiki/Java_%28software_platform%29">Java</a>&rsquo;s GC becoming more famous with tons of blows and whistles which can be tuned to practically any application memory usage scenario. There are also alternative models to automatic memory handling such as <a href="https://en.wikipedia.org/wiki/NewLISP">newLisp</a>&rsquo;s ORO, <a href="https://en.wikipedia.org/wiki/Rust_%28programming_language%29">Rust</a>&rsquo;s ownership based life cycle management and <a href="https://en.wikipedia.org/wiki/Objective-C">Objective-C</a>&rsquo;s ARC but we won&rsquo;t be talking about those. The cost of checking entire memory region is not a cheap one so people realized ways to make it more reasonable and thus nowadays we have various types of <em>Garbage Collection</em> algorithms. There are tracing garbage collectors and reference counting ones, copying (moving) and non-copying (non-moving) ones, incremental and non-incremental, generational, concurrent, parallel and real-time ones. To learn more about all those types of <em>Garbage Collectors</em> I suggest you try reading <a href="http://www.amazon.com/Garbage-Collection-Handbook-Management-Algorithms/dp/1420082795/">The Garbage Collection Handbook</a> which is a fundamental must read handbook for all those interested in the topic. But for rest of you lazy bunch let&rsquo;s start collecting all the garbage in the world by writing one garbage collector ourselves.</p>
 
 <p>Let&rsquo;s write a single threaded tracing tri-color (actually 4-color, I&rsquo;ll explain later why) non-copying incremental n-generational (n-generational meaning that we can configure any number of generations dynamically on startup, but our implementation will have limitation of maximum 64 generations) <em>Garbage Collector</em> in <em>C</em>. We won&rsquo;t tackle multithreading, concurrency and parallel garbage collection for sake of simplicity as those are more complex to implement but maybe I&rsquo;ll do another blog post about them later this year. Our simple garbage collector will be single threaded only, meaning it will correctly work only in applications that don&rsquo;t use multiple threads or somehow allocate memory in parallel. This kind of <em>Garbage Collector</em> is sufficient for languages that aren&rsquo;t natively multithreaded, such as <a href="https://en.wikipedia.org/wiki/Node.js">Node.js</a> and <a href="https://en.wikipedia.org/wiki/Pharo">Pharo</a>, so if you are planning to write such language yourself this might be a useful exercise for you. For those of you impatient ones there is a <a href="https://github.com/troydm/simplegc/">simplegc</a> repo with all the source code to study. So let&rsquo;s get started.</p>
 
@@ -1265,6 +1265,8 @@ We wrote a <em>Garbage Collector</em>, finally. That&rsquo;s it folks, have a ni
         <a class="basic-alignment left" href="/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/" title="Previous Post: Lifting Shadows off a Memory Allocation">&laquo; Lifting Shadows off a Memory Allocation</a>
       
       
+        <a class="basic-alignment right" href="/blog/2016/04/11/writing-parser-combinator-library-in-clojure/" title="Next Post: Writing Parser Combinator Library in Clojure">Writing Parser Combinator Library in Clojure &raquo;</a>
+      
     </p>
   </footer>
 </article>
@@ -1293,6 +1295,10 @@ We wrote a <em>Garbage Collector</em>, finally. That&rsquo;s it folks, have a ni
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2016/04/11/writing-parser-combinator-library-in-clojure/">Writing Parser Combinator Library in Clojure</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2015/09/06/of-all-the-garbage-in-the-world/">Of All The Garbage in The World</a>
       </li>
     
@@ -1306,10 +1312,6 @@ We wrote a <em>Garbage Collector</em>, finally. That&rsquo;s it folks, have a ni
     
       <li class="post">
         <a href="/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/">Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/03/29/writing-micro-compiler-in-ocaml/">Writing Micro Compiler in OCaml</a>
       </li>
     
   </ul>
@@ -1359,7 +1361,7 @@ We wrote a <em>Garbage Collector</em>, finally. That&rsquo;s it folks, have a ni
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2015 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
+  Copyright &copy; 2016 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 
