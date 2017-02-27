@@ -9,7 +9,7 @@
   <meta name="author" content="Dmitry Geurkov">
 
   
-  <meta name="description" content="TL;DR Writing parser combinator library in Clojure from scratch Recently I&rsquo;ve had an fortunate opportunity to participate in a commercial &hellip;">
+  <meta name="description" content="TL;DR Writing your own Ruby DSL language to sync and manage your public and private dotfiles As number of computers I own increased over the years &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -67,6 +67,56 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2017/02/27/manage-your-dotfiles-like-a-boss/">Manage Your dotFiles Like a Boss</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-02-27T16:18:50+04:00" pubdate data-updated="true">Feb 27<span>th</span>, 2017</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>TL;DR Writing your own Ruby DSL language to sync and manage your public and private dotfiles</p>
+
+<p>As number of computers I own increased over the years and I couldn&rsquo;t bring myself to get rid of some of the older ones so I thought that it was time to step down and think about management of dotfiles in more centralized, intuitive and automated way, because old ways of just <a href="https://git-scm.com/">git</a> cloning weren&rsquo;t enough anymore.
+Now there are systems that are actually tailored over that particular task such as <a href="https://www.gnu.org/software/stow/">GNU Stow</a> and <a href="https://dotfiles.github.io/">some other tools</a> however being a fairly lazy person I thought that writing my own would be a lot more easier and quicker than learning some tool that already existed.
+The benefits of writing your own tools are that you don&rsquo;t have to learn them, they will do exactly what you want them to do and you could potentially design them as simple and straightforward as possible from the very start, not mentioning about learning some new technologies while doing something new. The requirements for this particular system were for it to be easily portable over Unix/Linux/BSD/MacOS systems, hassle-free to kick start and straightforward simple to use. I&rsquo;ve decided to develop <a href="https://www.ruby-lang.org/">Ruby</a> based <a href="https://en.wikipedia.org/wiki/Domain-specific_language">DSL</a> targeting <strong>1.9.3</strong> version of <em>Ruby</em> language as most of the operating systems either provide that version or a newer version and because I&rsquo;ve already had experience developing <em>Ruby</em> based DSL to manage my ssh connections called <a href="https://github.com/troydm/sshc/">sshc</a> which proved to be very portable and easy to use.
+Note that I&rsquo;ve also decided to not support Windows operating system as there isn&rsquo;t much benefit or need of doing that as I don&rsquo;t use it or know anyone who would want some dotfiles management system for it.
+The result of this endeavor is in my git repo called <a href="https://github.com/troydm/dotcentral/">dotcentral</a> however for learning experience I&rsquo;m going to recreate it step by step for this blog post.
+Also note that this repo contains my own dotfiles too alongside <em>Ruby</em> DSL configuration files used to automatically install them. So let&rsquo;s get started from scratch.</p>
+
+<p><img src="https://i.imgur.com/CovRPWQ.png" alt="Akutabe" /></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2017/02/27/manage-your-dotfiles-like-a-boss/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -524,58 +574,9 @@ using <a href="https://metacpan.org/module/POE::Component::IRC" title="POCO::IRC
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/">Hosting Your Own Remote Private Torrent Tracker</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-04-24T22:05:00+04:00" pubdate data-updated="true">Apr 24<span>th</span>, 2013</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>TL;DR <em>Modifying BitTorrent Tracker written in C++</em></p>
-
-<p>Ever wanted to share a really big file (more than 4 GB) with someone without a hassle of uploading it to some file upload server?</p>
-
-<p><a href="http://bittorrent.org/">BitTorrent</a> to rescue, also there are alternatives like hosting your own ftp/sftp file server but I won&rsquo;t consider them here!
-So you probably already have a dedicated home file server running on Linux/BSD/Solaris that also has a torrent client installed on it that you access through web interface?</p>
-
-<p>Oh you don&rsquo;t? Snap it&rsquo;s it&rsquo;s so useful that nowadays almost everyone has some kind of NAS that he/she is using for file storage and torrents.
-So if you don&rsquo;t have one then you are behind of times</p>
-
-<p>So what do we need to share some file over torrent? Yes indeed we need a torrent tracker</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
   <div class="pagination">
+    
+      <a class="prev" href="/blog/page/2/">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
     
@@ -597,6 +598,10 @@ So if you don&rsquo;t have one then you are behind of times</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2017/02/27/manage-your-dotfiles-like-a-boss/">Manage Your dotFiles like a Boss</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2016/04/11/writing-parser-combinator-library-in-clojure/">Writing Parser Combinator Library in Clojure</a>
       </li>
     
@@ -610,10 +615,6 @@ So if you don&rsquo;t have one then you are behind of times</p>
     
       <li class="post">
         <a href="/blog/2015/01/25/write-you-a-monad-for-no-particular-reason-at-all/">Write you a Monad for no particular reason at all!</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/">Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc</a>
       </li>
     
   </ul>
@@ -662,7 +663,7 @@ So if you don&rsquo;t have one then you are behind of times</p>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2016 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
+  Copyright &copy; 2017 - <a href="mailto:d.geurkov@gmail.com">Dmitry Geurkov</a> -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

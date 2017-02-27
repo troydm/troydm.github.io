@@ -4,7 +4,7 @@
   <title><![CDATA[Troydm's Blog]]></title>
   <link href="http://troydm.github.io/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2016-05-03T00:31:01+04:00</updated>
+  <updated>2017-02-27T23:01:38+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -12,6 +12,909 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Manage Your dotFiles like a Boss]]></title>
+    <link href="http://troydm.github.io/blog/2017/02/27/manage-your-dotfiles-like-a-boss/"/>
+    <updated>2017-02-27T16:18:50+04:00</updated>
+    <id>http://troydm.github.io/blog/2017/02/27/manage-your-dotfiles-like-a-boss</id>
+    <content type="html"><![CDATA[<p>TL;DR Writing your own Ruby DSL language to sync and manage your public and private dotfiles</p>
+
+<p>As number of computers I own increased over the years and I couldn&rsquo;t bring myself to get rid of some of the older ones so I thought that it was time to step down and think about management of dotfiles in more centralized, intuitive and automated way, because old ways of just <a href="https://git-scm.com/">git</a> cloning weren&rsquo;t enough anymore.
+Now there are systems that are actually tailored over that particular task such as <a href="https://www.gnu.org/software/stow/">GNU Stow</a> and <a href="https://dotfiles.github.io/">some other tools</a> however being a fairly lazy person I thought that writing my own would be a lot more easier and quicker than learning some tool that already existed.
+The benefits of writing your own tools are that you don&rsquo;t have to learn them, they will do exactly what you want them to do and you could potentially design them as simple and straightforward as possible from the very start, not mentioning about learning some new technologies while doing something new. The requirements for this particular system were for it to be easily portable over Unix/Linux/BSD/MacOS systems, hassle-free to kick start and straightforward simple to use. I&rsquo;ve decided to develop <a href="https://www.ruby-lang.org/">Ruby</a> based <a href="https://en.wikipedia.org/wiki/Domain-specific_language">DSL</a> targeting <strong>1.9.3</strong> version of <em>Ruby</em> language as most of the operating systems either provide that version or a newer version and because I&rsquo;ve already had experience developing <em>Ruby</em> based DSL to manage my ssh connections called <a href="https://github.com/troydm/sshc/">sshc</a> which proved to be very portable and easy to use.
+Note that I&rsquo;ve also decided to not support Windows operating system as there isn&rsquo;t much benefit or need of doing that as I don&rsquo;t use it or know anyone who would want some dotfiles management system for it.
+The result of this endeavor is in my git repo called <a href="https://github.com/troydm/dotcentral/">dotcentral</a> however for learning experience I&rsquo;m going to recreate it step by step for this blog post.
+Also note that this repo contains my own dotfiles too alongside <em>Ruby</em> DSL configuration files used to automatically install them. So let&rsquo;s get started from scratch.</p>
+
+<p><img src="https://i.imgur.com/CovRPWQ.png" alt="Akutabe" /></p>
+
+<!-- more -->
+
+
+<p>The system we are going to build is called <strong>central</strong> so let&rsquo;s create a file called <strong>central</strong> with following two lines and make it an executable using <strong>chmod +x ./central</strong>.
+We don&rsquo;t have to specify an <strong>.rb</strong> extension for it as it&rsquo;s an <a href="https://en.wikipedia.org/wiki/Shebang_(Unix)">shebang</a> executable file.
+Also we require two standard <em>Ruby</em> modules <strong>erb</strong> and <strong>socket</strong> which we&rsquo;ll use later in our functions.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env ruby</span>
+</span><span class='line'><span class="c1"># encoding: utf-8</span>
+</span><span class='line'>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;erb&#39;</span>
+</span><span class='line'><span class="nb">require</span> <span class="s1">&#39;socket&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This executable will be used to run specialized Ruby DSL files called configurations each describing some steps central script should take in order to install or configure some tool or dotfile.
+Configuration files are usually named as <strong>configuration.rb</strong> but could be named any way you desire.
+Common configurations are kept in common directory and private configurations are kept in private one but I also have each environment-specific configurations in their respective hostname based directories with their own <strong>configuration.rb</strong> files. Some applications with more complex dotfile structures like <strong>vim</strong> need more extensive additional steps so I put their configuration in their own directories to keep entire configuration structure simple and intuitive to navigate and manage.
+Central script executes top-level <strong>configuration.rb</strong> file which executes all the necessary sub-directory <strong>configuration.rb</strong> files but it can also be used with only specific <strong>configuration.rb</strong> files as an arguments to <em>central</em> script in which case only that particular <strong>configuration.rb</strong> files will be executed.
+Here is an top-level tree view of my own dotcentral repository containing my own <strong>dotfiles</strong> and <strong>configuration.rb</strong> files.
+Also note some <strong>dotfiles</strong> have an <strong>.erb</strong> extension which I&rsquo;ll explain a little bit later.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>.
+</span><span class='line'>├── central
+</span><span class='line'>├── configuration.rb
+</span><span class='line'>└── configurations
+</span><span class='line'>    ├── common
+</span><span class='line'>    │   ├── bashrc
+</span><span class='line'>    │   ├── bashrc.erb
+</span><span class='line'>    │   ├── bin
+</span><span class='line'>    │   ├── configuration.rb
+</span><span class='line'>    │   ├── dircolors
+</span><span class='line'>    │   ├── fishrc
+</span><span class='line'>    │   ├── fishrc.erb
+</span><span class='line'>    │   ├── fonts
+</span><span class='line'>    │   ├── gitconfig
+</span><span class='line'>    │   ├── gitignore
+</span><span class='line'>    │   ├── mc
+</span><span class='line'>    │   ├── sshc
+</span><span class='line'>    │   ├── tigrc
+</span><span class='line'>    │   ├── tmux.conf
+</span><span class='line'>    │   ├── urxvt
+</span><span class='line'>    │   ├── vifm
+</span><span class='line'>    │   ├── vim
+</span><span class='line'>    │   ├── vimperator
+</span><span class='line'>    │   └── Xresources
+</span><span class='line'>    ├── private
+</span><span class='line'>    │   ├── common
+</span><span class='line'>    │   ├── configuration.rb
+</span><span class='line'>    │   ├── server
+</span><span class='line'>    │   ├── troymac.local
+</span><span class='line'>    │   ├── troynas
+</span><span class='line'>    │   └── troystick
+</span><span class='line'>    ├── server
+</span><span class='line'>    │   ├── bashrc.erb
+</span><span class='line'>    │   ├── bin
+</span><span class='line'>    │   ├── configuration.rb
+</span><span class='line'>    │   └── tmux.conf.erb
+</span><span class='line'>    ├── troymac.local
+</span><span class='line'>    │   ├── bashrc
+</span><span class='line'>    │   └── configuration.rb
+</span><span class='line'>    ├── troynas
+</span><span class='line'>    │   ├── bashrc
+</span><span class='line'>    │   ├── bashrc.erb
+</span><span class='line'>    │   ├── bin
+</span><span class='line'>    │   ├── configuration.rb
+</span><span class='line'>    │   ├── tmux.conf
+</span><span class='line'>    │   └── tmux.conf.erb
+</span><span class='line'>    └── troystick
+</span><span class='line'>        ├── compton.conf
+</span><span class='line'>        ├── configuration.rb
+</span><span class='line'>        ├── i3
+</span><span class='line'>        ├── i3status
+</span><span class='line'>        └── redshift.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As we need to be aware of our environment or more precisely a hostname where the script is running let&rsquo;s create a function called <strong>hostname</strong>.
+This function will be used in our configuration files.
+Also we might want to execute different scenarios based on which operating system we are running so let&rsquo;s add an <strong>os</strong> function to easily determine the operating system name.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1"># get hostname</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">hostname</span>
+</span><span class='line'>  <span class="no">Socket</span><span class="o">.</span><span class="n">gethostname</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># get operating system</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">os</span>
+</span><span class='line'>  <span class="k">if</span> <span class="no">RUBY_PLATFORM</span><span class="o">.</span><span class="n">include?</span><span class="p">(</span><span class="s1">&#39;linux&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="s1">&#39;linux&#39;</span>
+</span><span class='line'>  <span class="k">elsif</span> <span class="no">RUBY_PLATFORM</span><span class="o">.</span><span class="n">include?</span><span class="p">(</span><span class="s1">&#39;darwin&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="s1">&#39;osx&#39;</span>
+</span><span class='line'>  <span class="k">elsif</span> <span class="no">RUBY_PLATFORM</span><span class="o">.</span><span class="n">include?</span><span class="p">(</span><span class="s1">&#39;freebsd&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="s1">&#39;freebsd&#39;</span>
+</span><span class='line'>  <span class="k">elsif</span> <span class="no">RUBY_PLATFORM</span><span class="o">.</span><span class="n">include?</span><span class="p">(</span><span class="s1">&#39;solaris&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="s1">&#39;solaris&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next we need a way to run our <strong>configuration.rb</strong> files so we need to be aware of our working directory and be able to get absolute file path and file folder name.
+So let&rsquo;s define functions for this.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">pwd</span>
+</span><span class='line'>  <span class="no">Dir</span><span class="o">.</span><span class="n">pwd</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="no">File</span><span class="o">.</span><span class="n">absolute_path</span><span class="p">(</span><span class="no">File</span><span class="o">.</span><span class="n">expand_path</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">chdir</span><span class="p">(</span><span class="n">dir</span><span class="p">)</span>
+</span><span class='line'>  <span class="no">Dir</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">abs</span><span class="p">(</span><span class="n">dir</span><span class="p">))</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">file_exists?</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="no">File</span><span class="o">.</span><span class="n">file?</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="no">File</span><span class="o">.</span><span class="n">readable?</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">dir_exists?</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="no">Dir</span><span class="o">.</span><span class="n">exists?</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">file_dir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="no">File</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In order to <strong>run</strong> our configuration file we need to temporally <strong>chdir</strong> into it&rsquo;s folder, load the <em>Ruby</em> file and then <strong>chdir</strong> back into previous working directory.
+Also in some cases we might want to optionally run configuration files only if they exists so let&rsquo;s also define <strong>run_if_exists</strong> function.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">cwd</span> <span class="o">=</span> <span class="n">pwd</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">file</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="nb">puts</span> <span class="s2">&quot;Running configuration: &quot;</span><span class="o">+</span><span class="n">file</span>
+</span><span class='line'>  <span class="n">file_cwd</span> <span class="o">=</span> <span class="n">file_dir</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">chdir</span> <span class="n">file_cwd</span>
+</span><span class='line'>  <span class="nb">load</span> <span class="n">file</span>
+</span><span class='line'>  <span class="n">chdir</span> <span class="n">cwd</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">run_if_exists</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">file_exists?</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">run</span> <span class="n">file</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now to run our configurations we are either going to execute the top-level one or the ones provided as arguments to <em>central</em> script.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">if</span> <span class="no">ARGV</span><span class="o">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span><span class='line'>  <span class="no">ARGV</span><span class="o">.</span><span class="n">map</span> <span class="p">{</span><span class="o">|</span><span class="n">configuration</span><span class="o">|</span> <span class="n">run</span> <span class="n">configuration</span> <span class="p">}</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'>  <span class="n">run</span> <span class="s1">&#39;configuration.rb&#39;</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Also since we need not only our common configuration but also our private one which is kept in a separate <strong>git</strong> repository we might as well add a capability to git clone/pull any repository we want from a configuration file.
+But before doing that let&rsquo;s define a special function called <strong>sudo</strong> which will run any shell command with sudo prefix if command fails to run due to <strong>permission denied</strong> error.
+This works only if you have sudo configured without a password and your configuration needs to access some files/executables which need <em>root</em> user privileges but isn&rsquo;t absolutely necessary if you access only your own files.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">sudo</span><span class="p">(</span><span class="n">command</span><span class="p">,</span><span class="n">sudo</span><span class="o">=</span><span class="kp">false</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">sudo</span>
+</span><span class='line'>    <span class="n">sudo</span> <span class="o">=</span> <span class="s1">&#39;sudo &#39;</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="n">sudo</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="n">command</span> <span class="o">=</span> <span class="n">sudo</span><span class="o">+</span><span class="n">command</span>
+</span><span class='line'>  <span class="n">out</span> <span class="o">=</span> <span class="sb">`</span><span class="si">#{</span><span class="n">command</span><span class="si">}</span><span class="sb"> 2&gt;&amp;1`</span>
+</span><span class='line'>  <span class="c1"># removing line feed</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">out</span><span class="o">[-</span><span class="mi">1</span><span class="o">].</span><span class="n">ord</span> <span class="o">==</span> <span class="mi">10</span>
+</span><span class='line'>    <span class="n">out</span> <span class="o">=</span> <span class="n">out</span><span class="o">[</span><span class="mi">0</span><span class="o">.</span><span class="n">.</span><span class="o">.</span><span class="n">-</span><span class="mi">1</span><span class="o">]</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="c1"># removing carriage return</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">out</span><span class="o">[-</span><span class="mi">1</span><span class="o">].</span><span class="n">ord</span> <span class="o">==</span> <span class="mi">13</span>
+</span><span class='line'>    <span class="n">out</span> <span class="o">=</span> <span class="n">out</span><span class="o">[</span><span class="mi">0</span><span class="o">.</span><span class="n">.</span><span class="o">.</span><span class="n">-</span><span class="mi">1</span><span class="o">]</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">downcase</span><span class="o">.</span><span class="n">end_with?</span><span class="p">(</span><span class="s1">&#39;permission denied&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">sudo</span>
+</span><span class='line'>      <span class="no">STDERR</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&quot;Couldn&#39;t execute </span><span class="si">#{</span><span class="n">command</span><span class="si">}</span><span class="s2"> due to permission denied</span><span class="se">\n</span><span class="s2">run central with sudo privileges&quot;</span>
+</span><span class='line'>      <span class="nb">exit</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>      <span class="n">out</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="n">command</span><span class="p">,</span><span class="kp">true</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">out</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s add <strong>git</strong> function to clone any repository we might require and pull any repository already cloned to keep everything up-to date.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">git</span><span class="p">(</span><span class="n">url</span><span class="p">,</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">dir_exists?</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">dir_exists?</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">/.git&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">cwd</span> <span class="o">=</span> <span class="n">pwd</span><span class="p">()</span>
+</span><span class='line'>    <span class="n">chdir</span> <span class="n">path</span>
+</span><span class='line'>    <span class="n">out</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="s1">&#39;git pull&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">unless</span> <span class="n">out</span><span class="o">.</span><span class="n">downcase</span><span class="o">.</span><span class="n">include?</span> <span class="s2">&quot;already up-to-date&quot;</span>
+</span><span class='line'>      <span class="nb">puts</span> <span class="n">out</span>
+</span><span class='line'>      <span class="nb">puts</span> <span class="s2">&quot;Git repository pulled: </span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="s2"> → </span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="n">chdir</span> <span class="n">cwd</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="n">out</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;git clone </span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="s2"> </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="n">out</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="s2">&quot;Git repository cloned: </span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="s2"> → </span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Before using <strong>git</strong> we need to check if it&rsquo;s actually installed in the system.
+We might as well add checks for some other tools like <strong>file</strong>, <strong>grep</strong>, <strong>curl</strong> and <strong>readlink</strong> as we&rsquo;ll need them later in order to manage our configurations.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1"># check all required tools</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">checkTool</span><span class="p">(</span><span class="nb">name</span><span class="p">,</span><span class="n">check</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">output</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">#{</span><span class="n">check</span><span class="si">}</span><span class="s2"> 2&gt;&amp;1 1&gt;/dev/null&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">downcase</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">output</span><span class="o">.</span><span class="n">include?</span><span class="p">(</span><span class="s1">&#39;command not found&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="no">STDERR</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="nb">name</span><span class="si">}</span><span class="s2"> not found, please install it to use central&quot;</span>
+</span><span class='line'>    <span class="nb">exit</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">checkTool</span><span class="p">(</span><span class="s1">&#39;file&#39;</span><span class="p">,</span><span class="s1">&#39;file --version&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="n">checkTool</span><span class="p">(</span><span class="s1">&#39;grep&#39;</span><span class="p">,</span><span class="s1">&#39;grep --version&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="n">checkTool</span><span class="p">(</span><span class="s1">&#39;ln&#39;</span><span class="p">,</span><span class="s1">&#39;ln --version&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="n">checkTool</span><span class="p">(</span><span class="s1">&#39;readlink&#39;</span><span class="p">,</span><span class="s1">&#39;readlink --version&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="n">checkTool</span><span class="p">(</span><span class="s1">&#39;git&#39;</span><span class="p">,</span><span class="s1">&#39;git --version&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="n">checkTool</span><span class="p">(</span><span class="s1">&#39;curl&#39;</span><span class="p">,</span><span class="s1">&#39;curl --version&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now right about time for you to wonder how is this all used?
+Following example is my top-level <strong>configuration.rb</strong> file.
+First I git clone/pull my own private configuration repository.
+Next I run it&rsquo;s <strong>configuration.rb</strong> file followed by running <strong>common</strong> <strong>configuration.rb</strong> file.
+And finally I run <strong>hostname</strong> based configuration only if it exists for current host.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">git</span> <span class="s1">&#39;git@ubuntusrv:troydm/dotcentralprivate.git&#39;</span><span class="p">,</span> <span class="s1">&#39;configurations/private&#39;</span>
+</span><span class='line'><span class="n">run</span> <span class="s1">&#39;configurations/private/configuration.rb&#39;</span>
+</span><span class='line'><span class="n">run</span> <span class="s1">&#39;configurations/common/configuration.rb&#39;</span>
+</span><span class='line'><span class="n">run_if_exists</span> <span class="s2">&quot;configurations/</span><span class="si">#{</span><span class="n">hostname</span><span class="si">}</span><span class="s2">/configuration.rb&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s try adding a symlink capability to our DSL in order to install <a href="https://github.com/troydm/sshc">sshc</a> which I use everywhere.
+So we need a function to manage symlinks and some minor functions to check if symlink exists and which path it points to.
+So if file/dir exists in place where we want to create a symlink the system will stop with <strong>exit 1</strong> and <strong>stderr</strong> output will contain error description.
+Otherwise we check the symlink path and if it&rsquo;s not valid one we delete it and create a symlink with specified new path.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">symlink?</span><span class="p">(</span><span class="n">symlink</span><span class="p">)</span>
+</span><span class='line'>  <span class="no">File</span><span class="o">.</span><span class="n">symlink?</span><span class="p">(</span><span class="n">abs</span><span class="p">(</span><span class="n">symlink</span><span class="p">))</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">symlink_path</span><span class="p">(</span><span class="n">symlink</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;readlink </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">abs</span><span class="p">(</span><span class="n">symlink</span><span class="p">)</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">symlink</span><span class="p">(</span><span class="n">from</span><span class="p">,</span><span class="n">to</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">from</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">from</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">to</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">to</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">symlink?</span><span class="p">(</span><span class="n">from</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">symlink_path</span><span class="p">(</span><span class="n">from</span><span class="p">)</span> <span class="o">!=</span> <span class="n">to</span>
+</span><span class='line'>      <span class="n">rm</span> <span class="n">from</span>
+</span><span class='line'>      <span class="n">symlink</span> <span class="n">from</span><span class="p">,</span> <span class="n">to</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">elsif</span> <span class="n">file_exists?</span><span class="p">(</span><span class="n">from</span><span class="p">)</span>
+</span><span class='line'>    <span class="no">STDERR</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&quot;File </span><span class="si">#{</span><span class="n">from</span><span class="si">}</span><span class="s2"> exists in place of symlink...&quot;</span>
+</span><span class='line'>    <span class="nb">exit</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="k">elsif</span> <span class="n">dir_exists?</span><span class="p">(</span><span class="n">from</span><span class="p">)</span>
+</span><span class='line'>    <span class="no">STDERR</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&quot;Directory </span><span class="si">#{</span><span class="n">from</span><span class="si">}</span><span class="s2"> exists in place of symlink...&quot;</span>
+</span><span class='line'>    <span class="nb">exit</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="n">out</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;ln -s </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">to</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2"> </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">from</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="s2">&quot;Created symlink: </span><span class="si">#{</span><span class="n">from</span><span class="si">}</span><span class="s2"> → </span><span class="si">#{</span><span class="n">to</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is how it&rsquo;s used in my common <strong>configuration.rb</strong> to install sshc and make a symlink to it&rsquo;s executable in <strong>bin</strong> folder which I&rsquo;ll add to environment <strong>PATH</strong> via bashrc later.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1"># install sshc</span>
+</span><span class='line'><span class="n">git</span> <span class="s1">&#39;https://github.com/troydm/sshc.git&#39;</span><span class="p">,</span> <span class="s1">&#39;sshc&#39;</span>
+</span><span class='line'><span class="n">symlink</span> <span class="s1">&#39;bin/sshc&#39;</span><span class="p">,</span> <span class="s1">&#39;sshc/sshc&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s add some more functions to our Ruby DSL to <strong>mkdir</strong> directories, <strong>rm</strong> files/directories, <strong>touch</strong> files and <strong>chmod</strong> files/directories.
+You can easily add <strong>chown</strong> function too if you need it.
+We&rsquo;ll need all these functions later in our configurations.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">mkdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">unless</span> <span class="n">dir_exists?</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">out</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;mkdir -p </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="s2">&quot;Created directory: </span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">rm</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="n">recursive</span><span class="o">=</span><span class="kp">false</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">recursive</span>
+</span><span class='line'>    <span class="n">recursive</span> <span class="o">=</span> <span class="s1">&#39;-R &#39;</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="n">recursive</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="n">out</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;rm -</span><span class="si">#{</span><span class="n">recursive</span><span class="si">}</span><span class="s2">f </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="nb">puts</span> <span class="s2">&quot;Removed file: </span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">rmdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">rm</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="kp">true</span><span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">touch</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">unless</span> <span class="n">file_exists?</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">out</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;touch </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="s2">&quot;Touched file: </span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">def</span> <span class="nf">chmod</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="n">permissions</span><span class="p">,</span><span class="n">recursive</span><span class="o">=</span><span class="kp">false</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">recursive</span>
+</span><span class='line'>    <span class="n">recursive</span> <span class="o">=</span> <span class="s1">&#39;-R &#39;</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="n">recursive</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;chmod </span><span class="si">#{</span><span class="n">recursive</span><span class="si">}#{</span><span class="n">permissions</span><span class="si">}</span><span class="s2"> </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We&rsquo;ll also need <strong>curl</strong> function in order to download files.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">curl</span><span class="p">(</span><span class="n">url</span><span class="p">,</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">output</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;curl -s </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">unless</span> <span class="vg">$?</span><span class="o">.</span><span class="n">exitstatus</span> <span class="o">==</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="no">STDERR</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&quot;Couldn&#39;t download file from </span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="s2">...&quot;</span>
+</span><span class='line'>    <span class="nb">exit</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">if</span> <span class="no">File</span><span class="o">.</span><span class="n">exists?</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="no">File</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">==</span> <span class="n">output</span>
+</span><span class='line'>    <span class="k">return</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="no">File</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="n">output</span><span class="p">)</span>
+</span><span class='line'>  <span class="nb">puts</span> <span class="s2">&quot;Downloaded </span><span class="si">#{</span><span class="n">url</span><span class="si">}</span><span class="s2"> → </span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now that we have <strong>curl</strong> and <strong>chmod</strong> we can easily install <a href="https://beyondgrep.com/">ack</a> via our configuration file.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1"># install ack</span>
+</span><span class='line'><span class="n">curl</span> <span class="s1">&#39;http://beyondgrep.com/ack-2.14-single-file&#39;</span><span class="p">,</span> <span class="s1">&#39;bin/ack&#39;</span>
+</span><span class='line'><span class="n">chmod</span> <span class="s1">&#39;bin/ack&#39;</span><span class="p">,</span> <span class="s1">&#39;0755&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next we&rsquo;ll need <strong>ls</strong> function in our <em>Ruby</em> DSL which will support multiple options via second <strong>Hash</strong> type argument such as filtering of file/directory names based on <strong>grep</strong> pattern and listing either only files or directories as well as including dotfiles if necessary.
+Quite complicated function indeed, however this is necessary because of how we usually need to use it in our configurations depending on whenever we need to list only files or directories or some specific files or directories based on some predefined pattern.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">ls</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="n">options</span><span class="o">=</span><span class="p">{})</span>
+</span><span class='line'>  <span class="n">path</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">options</span><span class="o">[</span><span class="ss">:dotfiles</span><span class="o">]</span>
+</span><span class='line'>    <span class="n">dotfiles</span> <span class="o">=</span> <span class="s1">&#39;-a &#39;</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="n">dotfiles</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="n">command</span> <span class="o">=</span> <span class="s2">&quot;ls -1 </span><span class="si">#{</span><span class="n">dotfiles</span><span class="si">}</span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="ss">:grep</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="n">options</span><span class="o">[</span><span class="ss">:grep</span><span class="o">].</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span><span class='line'>    <span class="n">command</span> <span class="o">+=</span> <span class="s2">&quot; | grep </span><span class="si">#{</span><span class="n">options</span><span class="o">[</span><span class="ss">:grep</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="n">output</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">output</span><span class="o">.</span><span class="n">downcase</span><span class="o">.</span><span class="n">end_with?</span><span class="p">(</span><span class="s1">&#39;no such file or directory&#39;</span><span class="p">)</span>
+</span><span class='line'>    <span class="no">STDERR</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&quot;Couldn&#39;t ls directory </span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">...&quot;</span>
+</span><span class='line'>    <span class="nb">exit</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="n">ls</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">dir</span> <span class="o">=</span> <span class="kp">true</span>
+</span><span class='line'>  <span class="n">file</span> <span class="o">=</span> <span class="kp">true</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="ss">:dir</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">dir</span> <span class="o">=</span> <span class="n">options</span><span class="o">[</span><span class="ss">:dir</span><span class="o">]</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">key?</span><span class="p">(</span><span class="ss">:file</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">file</span> <span class="o">=</span> <span class="n">options</span><span class="o">[</span><span class="ss">:file</span><span class="o">]</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">unless</span> <span class="n">dir</span>
+</span><span class='line'>    <span class="n">ls</span> <span class="o">=</span> <span class="n">ls</span><span class="o">.</span><span class="n">keep_if</span> <span class="p">{</span><span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="o">!</span><span class="no">File</span><span class="o">.</span><span class="n">directory?</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="p">}</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">unless</span> <span class="n">file</span>
+</span><span class='line'>    <span class="n">ls</span> <span class="o">=</span> <span class="n">ls</span><span class="o">.</span><span class="n">keep_if</span> <span class="p">{</span><span class="o">|</span><span class="n">f</span><span class="o">|</span> <span class="o">!</span><span class="no">File</span><span class="o">.</span><span class="n">file?</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">#{</span><span class="n">path</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="n">f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="p">}</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">ls</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With the help of <strong>ls</strong> now we can finally install Powerline fonts.
+The code below clones git repository and installs all <strong>.ttf</strong> and <strong>.otf</strong> symlinks into either ~/.fonts or ~/Library/Fonts directory based on which operating system you are on.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1"># install Powerline fonts on OSX and Linux only</span>
+</span><span class='line'><span class="k">if</span> <span class="n">os</span> <span class="o">==</span> <span class="s1">&#39;linux&#39;</span>
+</span><span class='line'>    <span class="n">install_fontsdir</span> <span class="o">=</span> <span class="s1">&#39;~/.fonts&#39;</span>
+</span><span class='line'><span class="k">elsif</span> <span class="n">os</span> <span class="o">==</span> <span class="s1">&#39;osx&#39;</span>
+</span><span class='line'>    <span class="n">install_fontsdir</span> <span class="o">=</span> <span class="s1">&#39;~/Library/Fonts&#39;</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'><span class="k">if</span> <span class="n">install_fontsdir</span>
+</span><span class='line'>  <span class="n">git</span> <span class="s1">&#39;https://github.com/powerline/fonts.git&#39;</span><span class="p">,</span> <span class="s1">&#39;fonts&#39;</span>
+</span><span class='line'>  <span class="n">mkdir</span> <span class="n">install_fontsdir</span>
+</span><span class='line'>  <span class="n">ls</span><span class="p">(</span><span class="s1">&#39;fonts&#39;</span><span class="p">,{</span><span class="ss">:file</span> <span class="o">=&gt;</span> <span class="kp">false</span><span class="p">})</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span> <span class="o">|</span><span class="n">fontdir</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">ls</span><span class="p">(</span><span class="s2">&quot;fonts/</span><span class="si">#{</span><span class="n">fontdir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,{</span><span class="ss">:grep</span> <span class="o">=&gt;</span> <span class="s1">&#39;.[ot]tf&#39;</span><span class="p">})</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span> <span class="o">|</span><span class="n">font</span><span class="o">|</span>
+</span><span class='line'>          <span class="n">symlink</span> <span class="s2">&quot;</span><span class="si">#{</span><span class="n">install_fontsdir</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="n">font</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;fonts/</span><span class="si">#{</span><span class="n">fontdir</span><span class="si">}</span><span class="s2">/</span><span class="si">#{</span><span class="n">font</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>At this point we need a way to manage some differences that might arise from different operating systems and deployment path inside our dotfiles itself.
+For this we need some kind of templating system which will allow us to include or dynamically generate files when processing configuration files.
+Fortunately <em>Ruby</em> has <a href="http://www.stuartellis.name/articles/erb/">erb</a> templating system so we don&rsquo;t have to write our own.
+This will allow us to generate dotfiles on the fly as well as include content of some files into another ones.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">erb</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="n">output_file</span> <span class="o">=</span> <span class="kp">nil</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">file</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">output_file</span> <span class="o">==</span> <span class="kp">nil</span>
+</span><span class='line'>    <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">end_with?</span><span class="p">(</span><span class="s1">&#39;.erb&#39;</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">output_file</span> <span class="o">=</span> <span class="n">file</span><span class="o">[</span><span class="mi">0</span><span class="o">.</span><span class="n">.</span><span class="o">.</span><span class="n">-</span><span class="mi">4</span><span class="o">]</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>      <span class="n">output_file</span> <span class="o">=</span> <span class="n">file</span><span class="o">+</span><span class="s1">&#39;.out&#39;</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">file_exists?</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">output</span> <span class="o">=</span> <span class="no">ERB</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="no">File</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">file</span><span class="p">))</span><span class="o">.</span><span class="n">result</span>
+</span><span class='line'>    <span class="k">if</span> <span class="no">File</span><span class="o">.</span><span class="n">exists?</span><span class="p">(</span><span class="n">output_file</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="no">File</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">output_file</span><span class="p">)</span> <span class="o">==</span> <span class="n">output</span>
+</span><span class='line'>      <span class="k">return</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>    <span class="no">File</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span><span class="n">output</span><span class="p">)</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="s2">&quot;Processed erb </span><span class="si">#{</span><span class="n">file</span><span class="si">}</span><span class="s2"> → </span><span class="si">#{</span><span class="n">output_file</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="no">STDERR</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&quot;Couldn&#39;t process erb file </span><span class="si">#{</span><span class="n">file</span><span class="si">}</span><span class="s2">...&quot;</span>
+</span><span class='line'>    <span class="nb">exit</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In order to include files we&rsquo;ll need a small function to be able to easily read them.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">file</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">file_exists?</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">return</span> <span class="no">File</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>    <span class="no">STDERR</span><span class="o">.</span><span class="n">puts</span> <span class="s2">&quot;Couldn&#39;t read file </span><span class="si">#{</span><span class="n">file</span><span class="si">}</span><span class="s2">...&quot;</span>
+</span><span class='line'>    <span class="nb">exit</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is for example how I use this function to centrally manage my tmux configuration in <strong>tmux.conf.erb</strong> file.
+It includes common <strong>tmux.conf</strong> into my host-specific <strong>tmux.conf.erb</strong>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">&lt;%=</span> <span class="n">read</span> <span class="s1">&#39;../common/tmux.conf&#39;</span> <span class="o">%&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Left status bar</span>
+</span><span class='line'><span class="n">set</span> <span class="o">-</span><span class="n">g</span> <span class="n">status</span><span class="o">-</span><span class="n">left</span> <span class="s2">&quot; &quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># Right status bar</span>
+</span><span class='line'><span class="n">set</span> <span class="o">-</span><span class="n">g</span> <span class="n">status</span><span class="o">-</span><span class="n">interval</span> <span class="mi">1</span>
+</span><span class='line'><span class="n">set</span> <span class="o">-</span><span class="n">g</span> <span class="n">status</span><span class="o">-</span><span class="n">right</span><span class="o">-</span><span class="n">length</span> <span class="mi">200</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This <strong>tmux.conf.erb</strong> file is later processed from <strong>configuration.rb</strong> file resulting into <strong>tmux.conf</strong> file being generated.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">erb</span> <span class="s1">&#39;tmux.conf.erb&#39;</span>
+</span><span class='line'><span class="n">symlink</span> <span class="s1">&#39;~/.tmux.conf&#39;</span><span class="p">,</span> <span class="s1">&#39;tmux.conf&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And finally to manage shell configuration I want to source my bashrc into ~/.bashrc file in an automated way.
+To do this we&rsquo;ll create a function called <strong>source</strong>. It&rsquo;ll add source line to any shell configuration file if it isn&rsquo;t already added there.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">source</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="n">source</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">file</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">source</span> <span class="o">=</span> <span class="n">abs</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">source_line</span> <span class="o">=</span> <span class="s2">&quot;source </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">source</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="n">out</span> <span class="o">=</span> <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;grep -Fx &#39;</span><span class="si">#{</span><span class="n">source_line</span><span class="si">}</span><span class="s2">&#39; </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">file</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="n">out</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span>
+</span><span class='line'>    <span class="n">sudo</span><span class="p">(</span><span class="s2">&quot;echo &#39;</span><span class="si">#{</span><span class="n">source_line</span><span class="si">}</span><span class="s2">&#39; &gt;&gt; </span><span class="se">\&quot;</span><span class="si">#{</span><span class="n">file</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="s2">&quot;Added source </span><span class="si">#{</span><span class="n">source</span><span class="si">}</span><span class="s2"> line to </span><span class="si">#{</span><span class="n">file</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now finally I can use this function to source my configuration specific <strong>bashrc</strong> file which is generated from <strong>bashrc.erb</strong> into <strong>~/.bashrc</strong></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">erb</span> <span class="s1">&#39;bashrc.erb&#39;</span>
+</span><span class='line'><span class="n">source</span> <span class="s1">&#39;~/.bashrc&#39;</span><span class="p">,</span> <span class="s1">&#39;bashrc&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That&rsquo;s it folks this how I manage my dotfiles mess. I hope you learned something new today. Have a good coding time!</p>
+
+<p><img src="https://i.imgur.com/45SwyJm.png" alt="Azazel-san" /></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Writing Parser Combinator Library in Clojure]]></title>
