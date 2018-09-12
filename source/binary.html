@@ -1,0 +1,140 @@
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Binary to Decimal/Hex Converter</title>
+    <meta charset="UTF-8"> 
+</head>
+<style>
+body {
+  font-size: 15px;
+  font-family: Consolas, monospace;
+}
+</style>
+<body onload="update()">
+    <form>
+        <div>
+        Decimal: <input id="decimal" onkeyup="update()" type="text">
+        Hex: <input id="hex" onkeyup="updateHex()" type="text">        
+        </div>
+        <br/>
+        <div id="binary" onclick="binaryClick(event)">  </div>
+        
+    </form>
+    <script type="text/javascript">
+    
+    function dToH(v) {
+        var a = ['A','B','C','D','E','F'];
+        if (v > 9) {
+            return a[v-10];
+        }else{
+            return v;
+        }
+    }
+    function hToD(v) {
+        var a = ['A','B','C','D','E','F'];
+        if (!isNaN(parseInt(v, 10))) {
+            return parseInt(v);
+        } else {
+            var i = 0;
+            while(i < 6) {
+                if(v.toUpperCase() == a[i]) {
+                    return i+10;
+                }
+                i += 1;
+            }
+        }
+    }
+    
+    function updateHex() {
+        var h = document.getElementById("hex");
+        var s = h.value;
+        if(s == ""){
+            return;
+        }
+        var d = 0;
+        for (var i = s.length - 1; i >= 0; i--) {
+            var c = s.charAt(i).toUpperCase();
+            if(!isNaN(parseInt(c, 10)) || c == 'A' || c == 'B' || c == 'C' || c == 'D' || c == 'E' || c == 'F'){
+                d += hToD(c)*Math.pow(16,s.length - 1 - i);
+            }else{
+                update();
+                return;
+            }
+        }
+        document.getElementById("decimal").value = d;
+        update();
+    }
+    
+    function getVal() {
+        var d = document.getElementById("decimal");
+        var v = parseInt(d.value);
+        if (v == null || isNaN(v)){
+            v = 0;
+        }
+        return v;
+    }
+    
+    function getBinArray() {
+        var a = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+        var v = getVal();
+        var i = 0;
+        while(i<32){
+            var bit = v % 2;
+            v = Math.floor(v/2);
+            a[i] = bit;
+            i += 1;
+        }
+        return a;
+    }
+    
+    function binaryClick(e) {
+        var spaceWidth = 30;
+        var i = e.x - 10;
+        if (i > 460) {
+            i -= 3*spaceWidth;
+        }
+        else if (i > 300) {
+            i -= 2*spaceWidth;
+        }
+        else if (i > 140) {
+            i -= spaceWidth;
+        }
+        i = Math.floor(i/16.25);
+        i = 31-i;
+        var a = getBinArray();
+        a[i] = a[i] == 0 ? 1 : 0;
+        var i = 0;
+        var v = 0;
+        while(i<32){
+            if (a[i] == 1) {
+                v += Math.pow(2,i);
+            }
+            i += 1;
+        }
+        var d = document.getElementById("decimal");
+        d.value = ""+v;
+        update();
+    }
+    
+    function update() {
+        var a = getBinArray();
+        var b = document.getElementById("binary");
+        var h = document.getElementById("hex");
+        var v = getVal();
+        var hv = "";
+        while(v > 0){
+            hv = dToH(v % 16)+hv;
+            v = Math.floor(v/16);
+        }
+        h.value = hv;
+        
+        b.innerHTML = "│"+a[31]+"│"+a[30]+"│"+a[29]+"│"+a[28]+"│"+a[27]+"│"+a[26]+"│"+a[25]+"│"+a[24]+"│&nbsp;&nbsp;&nbsp;"+
+        "│"+a[23]+"│"+a[22]+"│"+a[21]+"│"+a[20]+"│"+a[19]+"│"+a[18]+"│"+a[17]+"│"+a[16]+"│&nbsp;&nbsp;&nbsp;"+
+        "│"+a[15]+"│"+a[14]+"│"+a[13]+"│"+a[12]+"│"+a[11]+"│"+a[10]+"│"+a[9]+"│"+a[8]+"│&nbsp;&nbsp;&nbsp;"+
+        "│"+a[7]+"│"+a[6]+"│"+a[5]+"│"+a[4]+"│"+a[3]+"│"+a[2]+"│"+a[1]+"│"+a[0]+"│";
+    }
+    
+    
+    </script>
+    </body>
+</html>
