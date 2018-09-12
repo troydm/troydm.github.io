@@ -4,7 +4,7 @@
   <title><![CDATA[Category: java | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/java/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2017-02-27T23:01:38+04:00</updated>
+  <updated>2018-09-12T21:52:11+03:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Write you a Monad for no particular reason at all!]]></title>
     <link href="http://troydm.github.io/blog/2015/01/25/write-you-a-monad-for-no-particular-reason-at-all/"/>
-    <updated>2015-01-25T19:01:12+04:00</updated>
+    <updated>2015-01-25T17:01:12+02:00</updated>
     <id>http://troydm.github.io/blog/2015/01/25/write-you-a-monad-for-no-particular-reason-at-all</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing functional programming library in Java</em></p>
 

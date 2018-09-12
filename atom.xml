@@ -4,7 +4,7 @@
   <title><![CDATA[Troydm's Blog]]></title>
   <link href="http://troydm.github.io/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2017-02-27T23:01:38+04:00</updated>
+  <updated>2018-09-12T21:52:11+03:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Manage Your dotFiles like a Boss]]></title>
     <link href="http://troydm.github.io/blog/2017/02/27/manage-your-dotfiles-like-a-boss/"/>
-    <updated>2017-02-27T16:18:50+04:00</updated>
+    <updated>2017-02-27T14:18:50+02:00</updated>
     <id>http://troydm.github.io/blog/2017/02/27/manage-your-dotfiles-like-a-boss</id>
     <content type="html"><![CDATA[<p>TL;DR Writing your own Ruby DSL language to sync and manage your public and private dotfiles</p>
 
@@ -919,7 +919,7 @@ To do this we&rsquo;ll create a function called <strong>source</strong>. It&rsqu
   <entry>
     <title type="html"><![CDATA[Writing Parser Combinator Library in Clojure]]></title>
     <link href="http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure/"/>
-    <updated>2016-04-11T23:23:41+04:00</updated>
+    <updated>2016-04-11T22:23:41+03:00</updated>
     <id>http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure</id>
     <content type="html"><![CDATA[<p>TL;DR Writing parser combinator library in Clojure from scratch</p>
 
@@ -2393,9 +2393,9 @@ it in the future.</p>
   
   <entry>
     <title type="html"><![CDATA[Of All The Garbage in The World]]></title>
-    <link href="http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world/"/>
-    <updated>2015-09-06T00:01:19+04:00</updated>
-    <id>http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world</id>
+    <link href="http://troydm.github.io/blog/2015/09/05/of-all-the-garbage-in-the-world/"/>
+    <updated>2015-09-05T23:01:19+03:00</updated>
+    <id>http://troydm.github.io/blog/2015/09/05/of-all-the-garbage-in-the-world</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing tri-color (actually 4-color) incremental generational garbage collector in C</em></p>
 
 <p><a href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Previously</a> we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
@@ -3526,7 +3526,7 @@ We wrote a <em>Garbage Collector</em>, finally. That&rsquo;s it folks, have a ni
   <entry>
     <title type="html"><![CDATA[Lifting Shadows off a Memory Allocation]]></title>
     <link href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/"/>
-    <updated>2015-08-03T18:32:35+04:00</updated>
+    <updated>2015-08-03T17:32:35+03:00</updated>
     <id>http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing power-of-2 malloc memory allocator in C</em></p>
 
@@ -4627,7 +4627,7 @@ Note: we&rsquo;ve also added definition of MMAP_SIZE to our initial value defini
   <entry>
     <title type="html"><![CDATA[Write you a Monad for no particular reason at all!]]></title>
     <link href="http://troydm.github.io/blog/2015/01/25/write-you-a-monad-for-no-particular-reason-at-all/"/>
-    <updated>2015-01-25T19:01:12+04:00</updated>
+    <updated>2015-01-25T17:01:12+02:00</updated>
     <id>http://troydm.github.io/blog/2015/01/25/write-you-a-monad-for-no-particular-reason-at-all</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing functional programming library in Java</em></p>
 
@@ -6672,7 +6672,7 @@ and you&rsquo;ll grok their beauty easily.</p>
   <entry>
     <title type="html"><![CDATA[Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc]]></title>
     <link href="http://troydm.github.io/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/"/>
-    <updated>2014-11-14T22:58:29+04:00</updated>
+    <updated>2014-11-14T20:58:29+02:00</updated>
     <id>http://troydm.github.io/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Rewriting micro compiler in OCaml</em></p>
 
@@ -7300,7 +7300,7 @@ will compile it using <em>nasm</em> and <em>gcc</em>. Let&rsquo;s create <em>mic
   <entry>
     <title type="html"><![CDATA[Writing Micro Compiler in OCaml]]></title>
     <link href="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/"/>
-    <updated>2014-03-29T19:12:25+04:00</updated>
+    <updated>2014-03-29T17:12:25+02:00</updated>
     <id>http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing micro compiler in OCaml</em></p>
 
@@ -8109,7 +8109,7 @@ is quite complex and entertaining task but it&rsquo;s definitely worth the time 
   <entry>
     <title type="html"><![CDATA[Making 30 years old Pascal code run again]]></title>
     <link href="http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again/"/>
-    <updated>2014-01-26T22:48:00+04:00</updated>
+    <updated>2014-01-26T22:48:00+02:00</updated>
     <id>http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Fixing some really old Prolog implementation written in Pascal</em></p>
 
@@ -9066,7 +9066,7 @@ I&rsquo;ve also ported <em>btoy.p</em> the same way stumbling upon same kind of 
   <entry>
     <title type="html"><![CDATA[Processing &amp; Broadcasting Financial Data in Scheme]]></title>
     <link href="http://troydm.github.io/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme/"/>
-    <updated>2013-09-04T21:44:00+04:00</updated>
+    <updated>2013-09-04T21:44:00+03:00</updated>
     <id>http://troydm.github.io/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing data collecter, processor and broadcaster in Scheme</em></p>
 
@@ -9248,7 +9248,7 @@ listen on port and accept connections on listener. Each client will be processed
   <entry>
     <title type="html"><![CDATA[Writing IRC Bot using Perl 5 and POCO::IRC]]></title>
     <link href="http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc/"/>
-    <updated>2013-07-22T21:29:00+04:00</updated>
+    <updated>2013-07-22T21:29:00+03:00</updated>
     <id>http://troydm.github.io/blog/2013/07/22/writting-irc-bot-using-perl-5-and-poco-irc</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing IRC bot in Perl</em></p>
 
@@ -9555,7 +9555,7 @@ Just look how many modules are released on <a href="http://cpan.org" title="CPAN
   <entry>
     <title type="html"><![CDATA[Hosting your own remote private torrent tracker]]></title>
     <link href="http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/"/>
-    <updated>2013-04-24T22:05:00+04:00</updated>
+    <updated>2013-04-24T22:05:00+03:00</updated>
     <id>http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Modifying BitTorrent Tracker written in C++</em></p>
 

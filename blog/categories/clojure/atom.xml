@@ -4,7 +4,7 @@
   <title><![CDATA[Category: clojure | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/clojure/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2017-02-27T23:01:38+04:00</updated>
+  <updated>2018-09-12T21:52:11+03:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Writing Parser Combinator Library in Clojure]]></title>
     <link href="http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure/"/>
-    <updated>2016-04-11T23:23:41+04:00</updated>
+    <updated>2016-04-11T22:23:41+03:00</updated>
     <id>http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure</id>
     <content type="html"><![CDATA[<p>TL;DR Writing parser combinator library in Clojure from scratch</p>
 
