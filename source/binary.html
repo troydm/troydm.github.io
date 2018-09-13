@@ -17,8 +17,43 @@ body {
         Hex: <input id="hex" onkeyup="updateHex()" type="text">        
         </div>
         <br/>
-        <div id="binary" onclick="binaryClick(event)">  </div>
+        <div>
+        <div id="b31" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b30" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b29" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b28" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b27" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b26" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b25" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b24" style="float: left" onclick="binaryClick(this)">│0│&nbsp;&nbsp;</div>
+        &nbsp;&nbsp;        
+        <div id="b23" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b22" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b21" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b20" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b19" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b18" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b17" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b16" style="float: left" onclick="binaryClick(this)">│0│&nbsp;&nbsp;</div>
         
+        <div id="b15" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b14" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b13" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b12" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b11" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b10" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b9" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b8" style="float: left" onclick="binaryClick(this)">│0│&nbsp;&nbsp;</div>
+        &nbsp;&nbsp;
+        <div id="b7" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b6" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b5" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b4" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b3" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b2" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b1" style="float: left" onclick="binaryClick(this)">│0</div>
+        <div id="b0" style="float: left" onclick="binaryClick(this)">│0│&nbsp;&nbsp;</div>
+        </div>
     </form>
     <script type="text/javascript">
     
@@ -88,20 +123,8 @@ body {
     }
     
     function binaryClick(e) {
-        var spaceWidth = 30;
-        var i = e.x - 10;
-        if (i > 460) {
-            i -= 3*spaceWidth;
-        }
-        else if (i > 300) {
-            i -= 2*spaceWidth;
-        }
-        else if (i > 140) {
-            i -= spaceWidth;
-        }
-        i = Math.floor(i/16.25);
-        i = 31-i;
-        var a = getBinArray();
+    	var i = parseInt(e.id.substring(1));
+    	var a = getBinArray();
         a[i] = a[i] == 0 ? 1 : 0;
         var i = 0;
         var v = 0;
@@ -118,7 +141,6 @@ body {
     
     function update() {
         var a = getBinArray();
-        var b = document.getElementById("binary");
         var h = document.getElementById("hex");
         var v = getVal();
         var hv = "";
@@ -128,10 +150,13 @@ body {
         }
         h.value = hv;
         
-        b.innerHTML = "│"+a[31]+"│"+a[30]+"│"+a[29]+"│"+a[28]+"│"+a[27]+"│"+a[26]+"│"+a[25]+"│"+a[24]+"│&nbsp;&nbsp;&nbsp;"+
-        "│"+a[23]+"│"+a[22]+"│"+a[21]+"│"+a[20]+"│"+a[19]+"│"+a[18]+"│"+a[17]+"│"+a[16]+"│&nbsp;&nbsp;&nbsp;"+
-        "│"+a[15]+"│"+a[14]+"│"+a[13]+"│"+a[12]+"│"+a[11]+"│"+a[10]+"│"+a[9]+"│"+a[8]+"│&nbsp;&nbsp;&nbsp;"+
-        "│"+a[7]+"│"+a[6]+"│"+a[5]+"│"+a[4]+"│"+a[3]+"│"+a[2]+"│"+a[1]+"│"+a[0]+"│";
+        for(var i = 0; i < 32; i++){
+        	var b = document.getElementById("b"+i); 
+        	b.innerHTML = "│"+a[i];
+        	if(i % 8 == 0) {
+        		b.innerHTML += "│&nbsp;&nbsp";
+        	}
+        }
     }
     
     
