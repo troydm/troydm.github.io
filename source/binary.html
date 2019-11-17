@@ -2,57 +2,102 @@
 <head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>Binary to Decimal/Hex Converter</title>
-    <meta charset="UTF-8"> 
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 </head>
 <style>
 body {
   font-size: 15px;
   font-family: Consolas, monospace;
 }
+
+.binary-form {
+  width: 100%;
+  max-width: 610px;
+  padding: 15px;
+  margin: auto;
+}
+
+.binary-form .form-control {
+  position: relative;
+  box-sizing: border-box;
+  height: auto;
+  padding: 10px;
+  font-size: 16px;
+  margin: 10px;
+}
+
+.binary {
+   border-top: 1px solid #333;
+   border-bottom: 1px solid #333;
+   border-left: 1px solid #333;
+   padding: 3px;
+   cursor: pointer;
+   float: left;	
+}
+
+.binary-end {
+   border: 1px solid #333;
+   padding: 3px;
+   cursor: pointer;
+   float: left;	
+}
+
+.binary-space {
+   width: 20px;
+   float: left;	
+}
+
+.center-block {
+   margin: 10px;
+   width: 100%;
+   display:block;
+}
 </style>
-<body onload="update()">
-    <form>
+<body onload="update()" class="text-center">
+    <form class="binary-form">
         <div>
-        Decimal: <input id="decimal" onkeyup="update()" type="text">
-        Hex: <input id="hex" onkeyup="updateHex()" type="text">        
+          <label for="decimal" class="sr-only">Decimal</label>
+          <input id="decimal" onkeyup="update()" type="text" class="form-control" placeholder="Decimal" >
+          <label for="hex" class="sr-only">Hex</label>
+          <input id="hex" onkeyup="updateHex()" type="text" class="form-control" placeholder="Hex" >        
         </div>
-        <br/>
-        <div>
-        <div id="b31" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b30" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b29" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b28" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b27" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b26" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b25" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b24" style="float: left" onclick="binaryClick(this)">│0│&nbsp;&nbsp;</div>
-        &nbsp;&nbsp;        
-        <div id="b23" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b22" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b21" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b20" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b19" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b18" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b17" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b16" style="float: left" onclick="binaryClick(this)">│0│&nbsp;&nbsp;</div>
-        
-        <div id="b15" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b14" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b13" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b12" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b11" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b10" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b9" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b8" style="float: left" onclick="binaryClick(this)">│0│&nbsp;&nbsp;</div>
-        &nbsp;&nbsp;
-        <div id="b7" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b6" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b5" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b4" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b3" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b2" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b1" style="float: left" onclick="binaryClick(this)">│0</div>
-        <div id="b0" style="float: left" onclick="binaryClick(this)">│0│&nbsp;&nbsp;</div>
+        <div class="center-block">
+        <div id="b31" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b30" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b29" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b28" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b27" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b26" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b25" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b24" class="binary-end" onclick="binaryClick(this)">0</div>
+        <div class="binary-space">&nbsp;</div>        
+        <div id="b23" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b22" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b21" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b20" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b19" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b18" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b17" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b16" class="binary-end" onclick="binaryClick(this)">0</div>
+        <div class="binary-space">&nbsp;</div>
+        <div id="b15" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b14" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b13" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b12" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b11" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b10" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b9" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b8" class="binary-end" onclick="binaryClick(this)">0</div>
+        <div class="binary-space">&nbsp;</div>
+        <div id="b7" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b6" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b5" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b4" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b3" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b2" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b1" class="binary" onclick="binaryClick(this)">0</div>
+        <div id="b0" class="binary-end" onclick="binaryClick(this)">0</div>
         </div>
     </form>
     <script type="text/javascript">
@@ -152,10 +197,7 @@ body {
         
         for(var i = 0; i < 32; i++){
         	var b = document.getElementById("b"+i); 
-        	b.innerHTML = "│"+a[i];
-        	if(i % 8 == 0) {
-        		b.innerHTML += "│&nbsp;&nbsp";
-        	}
+        	b.innerHTML = a[i];
         }
     }
     
