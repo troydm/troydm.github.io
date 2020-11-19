@@ -59,6 +59,8 @@ body {
         <div>
           <label for="decimal" class="sr-only">Decimal</label>
           <input id="decimal" onkeyup="update()" type="text" class="form-control" placeholder="Decimal" >
+		  <label for="twoscomp" class="sr-only">Two's Complement</label>
+          <input id="twoscomp" onkeyup="updateTwoscomp()" type="text" class="form-control" placeholder="Two's Complement" >
           <label for="hex" class="sr-only">Hex</label>
           <input id="hex" onkeyup="updateHex()" type="text" class="form-control" placeholder="Hex" >        
         </div>
@@ -142,8 +144,20 @@ body {
             }
         }
         document.getElementById("decimal").value = d;
+		document.getElementById("twoscomp").value = twosComplement(d);
         update();
     }
+	
+	function twosComplement(v) {
+		if (!document.getElementById("decimal").value) {
+			return "";
+		}
+	    v = v % 256;
+		if (v > 127) {
+			return -(256-v);
+		}
+		return v;
+	}
     
     function getVal() {
         var d = document.getElementById("decimal");
@@ -181,6 +195,7 @@ body {
         }
         var d = document.getElementById("decimal");
         d.value = ""+v;
+		document.getElementById("twoscomp").value = twosComplement(v);
         update();
     }
     
@@ -188,6 +203,7 @@ body {
         var a = getBinArray();
         var h = document.getElementById("hex");
         var v = getVal();
+		document.getElementById("twoscomp").value = twosComplement(v);
         var hv = "";
         while(v > 0){
             hv = dToH(v % 16)+hv;
@@ -200,6 +216,25 @@ body {
         	b.innerHTML = a[i];
         }
     }
+	
+	function updateTwoscomp() {
+	    var d = document.getElementById("twoscomp");
+		var v = parseInt(d.value);
+        if (v == null || isNaN(v)){
+            return;
+        }
+		if (v > 127) {
+		    v = v % 128;
+		}
+		if (v < -128) {
+		    v = v % 129;
+		}
+		if (v < 0) {
+			v = 256+v;
+		}
+		document.getElementById("decimal").value = v;
+		update();
+	}
     
     
     </script>
