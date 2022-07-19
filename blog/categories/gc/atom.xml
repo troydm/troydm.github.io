@@ -4,7 +4,7 @@
   <title><![CDATA[Category: gc | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/gc/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2020-11-19T16:35:02+02:00</updated>
+  <updated>2022-07-19T17:34:17+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Of All The Garbage in The World]]></title>
-    <link href="http://troydm.github.io/blog/2015/09/05/of-all-the-garbage-in-the-world/"/>
-    <updated>2015-09-05T23:01:19+03:00</updated>
-    <id>http://troydm.github.io/blog/2015/09/05/of-all-the-garbage-in-the-world</id>
+    <link href="http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world/"/>
+    <updated>2015-09-06T00:01:19+04:00</updated>
+    <id>http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing tri-color (actually 4-color) incremental generational garbage collector in C</em></p>
 
 <p><a href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Previously</a> we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.

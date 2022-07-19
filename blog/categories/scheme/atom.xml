@@ -4,7 +4,7 @@
   <title><![CDATA[Category: scheme | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/scheme/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2020-11-19T16:35:02+02:00</updated>
+  <updated>2022-07-19T17:34:17+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Processing &amp; Broadcasting Financial Data in Scheme]]></title>
     <link href="http://troydm.github.io/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme/"/>
-    <updated>2013-09-04T21:44:00+03:00</updated>
+    <updated>2013-09-04T21:44:00+04:00</updated>
     <id>http://troydm.github.io/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing data collecter, processor and broadcaster in Scheme</em></p>
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: asm | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/asm/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2020-11-19T16:35:02+02:00</updated>
+  <updated>2022-07-19T17:34:17+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Rewriting Micro Compiler in OCaml using ocamllex and ocamlyacc]]></title>
     <link href="http://troydm.github.io/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc/"/>
-    <updated>2014-11-14T20:58:29+02:00</updated>
+    <updated>2014-11-14T22:58:29+04:00</updated>
     <id>http://troydm.github.io/blog/2014/11/14/rewriting-micro-compiler-in-ocaml-using-ocamllex-and-ocamlyacc</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Rewriting micro compiler in OCaml</em></p>
 
@@ -722,7 +722,7 @@ will compile it using <em>nasm</em> and <em>gcc</em>. Let&rsquo;s create <em>mic
   <entry>
     <title type="html"><![CDATA[Writing Micro Compiler in OCaml]]></title>
     <link href="http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml/"/>
-    <updated>2014-03-29T17:12:25+02:00</updated>
+    <updated>2014-03-29T19:12:25+04:00</updated>
     <id>http://troydm.github.io/blog/2014/03/29/writing-micro-compiler-in-ocaml</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing micro compiler in OCaml</em></p>
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: programming | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/programming/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2020-11-19T16:35:02+02:00</updated>
+  <updated>2022-07-19T17:34:17+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Hosting your own remote private torrent tracker]]></title>
     <link href="http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/"/>
-    <updated>2013-04-24T22:05:00+03:00</updated>
+    <updated>2013-04-24T22:05:00+04:00</updated>
     <id>http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Modifying BitTorrent Tracker written in C++</em></p>
 

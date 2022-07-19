@@ -4,7 +4,7 @@
   <title><![CDATA[Category: git | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/git/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2020-11-19T16:35:02+02:00</updated>
+  <updated>2022-07-19T17:34:17+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Manage Your dotFiles like a Boss]]></title>
     <link href="http://troydm.github.io/blog/2017/02/27/manage-your-dotfiles-like-a-boss/"/>
-    <updated>2017-02-27T14:18:50+02:00</updated>
+    <updated>2017-02-27T16:18:50+04:00</updated>
     <id>http://troydm.github.io/blog/2017/02/27/manage-your-dotfiles-like-a-boss</id>
     <content type="html"><![CDATA[<p>TL;DR Writing your own Ruby DSL language to sync and manage your public and private dotfiles</p>
 

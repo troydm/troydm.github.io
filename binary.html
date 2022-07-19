@@ -56,51 +56,86 @@ body {
 </style>
 <body onload="update()" class="text-center">
     <form class="binary-form">
-        <div>
-          <label for="decimal" class="sr-only">Decimal</label>
-          <input id="decimal" onkeyup="update()" type="text" class="form-control" placeholder="Decimal" >
-		  <label for="twoscomp" class="sr-only">Two's Complement</label>
-          <input id="twoscomp" onkeyup="updateTwoscomp()" type="text" class="form-control" placeholder="Two's Complement" >
-          <label for="hex" class="sr-only">Hex</label>
-          <input id="hex" onkeyup="updateHex()" type="text" class="form-control" placeholder="Hex" >        
-        </div>
-        <div class="center-block">
-        <div id="b31" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b30" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b29" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b28" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b27" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b26" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b25" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b24" class="binary-end" onclick="binaryClick(this)">0</div>
-        <div class="binary-space">&nbsp;</div>        
-        <div id="b23" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b22" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b21" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b20" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b19" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b18" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b17" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b16" class="binary-end" onclick="binaryClick(this)">0</div>
-        <div class="binary-space">&nbsp;</div>
-        <div id="b15" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b14" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b13" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b12" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b11" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b10" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b9" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b8" class="binary-end" onclick="binaryClick(this)">0</div>
-        <div class="binary-space">&nbsp;</div>
-        <div id="b7" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b6" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b5" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b4" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b3" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b2" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b1" class="binary" onclick="binaryClick(this)">0</div>
-        <div id="b0" class="binary-end" onclick="binaryClick(this)">0</div>
-        </div>
+	    <div class="container">
+		  <div class="row">
+			<div class="col-lg-12">
+				<h4>Binary to Decimal/Hex Converter</h4>
+			</div>
+		  </div>
+		  <div class="row">
+		    <div class="col-lg">
+				<label for="decimal" class="sr-only">Decimal</label>
+				<input id="decimal" onkeyup="update()" type="text" class="form-control" placeholder="Decimal" >
+			</div>
+		  </div>
+		  <div class="row align-items-center">
+		    <div class="col-lg-9">
+				<label for="twoscomp" class="sr-only">Two's Complement</label>
+				<input id="twoscomp" onkeyup="updateTwoscomp()" type="text" class="form-control" placeholder="Two's Complement" >
+			</div>
+			<div class="col-sm-3">
+				<div class="btn-group btn-group-toggle" data-toggle="buttons">
+					<label class="btn btn-secondary active">
+						<input type="radio" name="options" id="twoscomp8" onclick="twosComplementOpt(8)" autocomplete="off" checked>8</input>
+					</label>
+					<label class="btn btn-secondary">
+						<input type="radio" name="options" id="twoscomp16" onclick="twosComplementOpt(16)" autocomplete="off">16</input>
+					</label>
+					<label class="btn btn-secondary">
+						<input type="radio" name="options" id="twoscomp24" onclick="twosComplementOpt(24)" autocomplete="off">24</input>
+					</label>
+				</div>
+			</div>
+		  </div>
+		  <div class="row">
+			<div class="col-lg">
+			<label for="hex" class="sr-only">Hex</label>
+            <input id="hex" onkeyup="updateHex()" type="text" class="form-control" placeholder="Hex">
+			</div>
+		  </div>
+		  <div class="row">
+		    <div class="col-lg">
+			<div class="center-block">
+				<div id="b31" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b30" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b29" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b28" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b27" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b26" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b25" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b24" class="binary-end" onclick="binaryClick(this)">0</div>
+				<div class="binary-space">&nbsp;</div>        
+				<div id="b23" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b22" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b21" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b20" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b19" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b18" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b17" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b16" class="binary-end" onclick="binaryClick(this)">0</div>
+				<div class="binary-space">&nbsp;</div>
+				<div id="b15" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b14" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b13" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b12" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b11" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b10" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b9" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b8" class="binary-end" onclick="binaryClick(this)">0</div>
+				<div class="binary-space">&nbsp;</div>
+				<div id="b7" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b6" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b5" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b4" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b3" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b2" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b1" class="binary" onclick="binaryClick(this)">0</div>
+				<div id="b0" class="binary-end" onclick="binaryClick(this)">0</div>
+			</div>
+			</div>
+		   </div>
+		</div>
+        
     </form>
     <script type="text/javascript">
     
@@ -152,11 +187,31 @@ body {
 		if (!document.getElementById("decimal").value) {
 			return "";
 		}
-	    v = v % 256;
-		if (v > 127) {
-			return -(256-v);
+		var opt = 8;
+		for (var i = 8; i < 32; i += 8) {
+			if (document.getElementById("twoscomp" + i).hasAttribute("checked")) {
+				opt = i;
+				break;
+			}
+		}
+		opt = Math.pow(2, opt);
+	    v = v % opt;
+		if (v > (opt/2 - 1)) {
+			return -(opt-v);
 		}
 		return v;
+	}
+	
+	function twosComplementOpt(b) {
+		for (var i = 8; i < 32; i += 8) {
+			var btn = document.getElementById("twoscomp" + i);
+			btn.removeAttribute("checked");
+			btn.parentNode.setAttribute("class", "btn btn-secondary");
+		}
+		var btn = document.getElementById("twoscomp" + b);
+		btn.setAttribute("checked", "");
+		btn.parentNode.setAttribute("class", "btn btn-secondary active");
+		updateTwoscomp();
 	}
     
     function getVal() {
@@ -223,16 +278,23 @@ body {
         if (v == null || isNaN(v)){
             return;
         }
-		if (v > 127) {
-		    v = v % 128;
+		var opt = 8;
+		for (var i = 8; i < 32; i += 8) {
+			if (document.getElementById("twoscomp" + i).hasAttribute("checked")) {
+				opt = i;
+				break;
+			}
 		}
-		if (v < -128) {
-		    v = v % 129;
+		opt = Math.pow(2, opt);
+		var hopt = opt/2 - 1;
+		if (v > hopt) {
+		    v = v % (hopt+1);
+		} else if (v < -(hopt+1)) {
+		    v = v % (hopt+1);
+		} else if (v < 0) {
+			v = opt+v;
 		}
-		if (v < 0) {
-			v = 256+v;
-		}
-		document.getElementById("decimal").value = v;
+		document.getElementById("decimal").value = Math.abs(v);
 		update();
 	}
     

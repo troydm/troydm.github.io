@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2020-11-19T16:35:02+02:00</updated>
+  <updated>2022-07-19T17:34:17+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Of All The Garbage in The World]]></title>
-    <link href="http://troydm.github.io/blog/2015/09/05/of-all-the-garbage-in-the-world/"/>
-    <updated>2015-09-05T23:01:19+03:00</updated>
-    <id>http://troydm.github.io/blog/2015/09/05/of-all-the-garbage-in-the-world</id>
+    <link href="http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world/"/>
+    <updated>2015-09-06T00:01:19+04:00</updated>
+    <id>http://troydm.github.io/blog/2015/09/06/of-all-the-garbage-in-the-world</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing tri-color (actually 4-color) incremental generational garbage collector in C</em></p>
 
 <p><a href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/">Previously</a> we&rsquo;ve talked about manual memory allocation and unraveled some shadows around it.
@@ -1370,7 +1370,7 @@ We wrote a <em>Garbage Collector</em>, finally. That&rsquo;s it folks, have a ni
   <entry>
     <title type="html"><![CDATA[Lifting Shadows off a Memory Allocation]]></title>
     <link href="http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation/"/>
-    <updated>2015-08-03T17:32:35+03:00</updated>
+    <updated>2015-08-03T18:32:35+04:00</updated>
     <id>http://troydm.github.io/blog/2015/08/03/lifting-shadows-off-a-memory-allocation</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing power-of-2 malloc memory allocator in C</em></p>
 
@@ -2667,7 +2667,7 @@ As you can see we&rsquo;ve improved performance by partially sacrificing fragmen
   <entry>
     <title type="html"><![CDATA[Hosting your own remote private torrent tracker]]></title>
     <link href="http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker/"/>
-    <updated>2013-04-24T22:05:00+03:00</updated>
+    <updated>2013-04-24T22:05:00+04:00</updated>
     <id>http://troydm.github.io/blog/2013/04/24/hosting-your-own-remote-private-torrent-tracker</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Modifying BitTorrent Tracker written in C++</em></p>
 

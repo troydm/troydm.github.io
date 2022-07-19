@@ -4,7 +4,7 @@
   <title><![CDATA[Category: pascal | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/pascal/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2020-11-19T16:35:02+02:00</updated>
+  <updated>2022-07-19T17:34:17+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Making 30 years old Pascal code run again]]></title>
     <link href="http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again/"/>
-    <updated>2014-01-26T22:48:00+02:00</updated>
+    <updated>2014-01-26T22:48:00+04:00</updated>
     <id>http://troydm.github.io/blog/2014/01/26/making-30-years-old-pascal-code-run-again</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Fixing some really old Prolog implementation written in Pascal</em></p>
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: lisp | Troydm's Blog]]></title>
   <link href="http://troydm.github.io/blog/categories/lisp/atom.xml" rel="self"/>
   <link href="http://troydm.github.io/"/>
-  <updated>2020-11-19T16:35:02+02:00</updated>
+  <updated>2022-07-19T17:34:17+04:00</updated>
   <id>http://troydm.github.io/</id>
   <author>
     <name><![CDATA[Dmitry Geurkov]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Writing Parser Combinator Library in Clojure]]></title>
     <link href="http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure/"/>
-    <updated>2016-04-11T22:23:41+03:00</updated>
+    <updated>2016-04-11T23:23:41+04:00</updated>
     <id>http://troydm.github.io/blog/2016/04/11/writing-parser-combinator-library-in-clojure</id>
     <content type="html"><![CDATA[<p>TL;DR Writing parser combinator library in Clojure from scratch</p>
 
@@ -1956,7 +1956,7 @@ it in the future.</p>
   <entry>
     <title type="html"><![CDATA[Processing &amp; Broadcasting Financial Data in Scheme]]></title>
     <link href="http://troydm.github.io/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme/"/>
-    <updated>2013-09-04T21:44:00+03:00</updated>
+    <updated>2013-09-04T21:44:00+04:00</updated>
     <id>http://troydm.github.io/blog/2013/09/04/processing-and-broadcasting-financial-data-in-scheme</id>
     <content type="html"><![CDATA[<p>TL;DR <em>Writing data collecter, processor and broadcaster in Scheme</em></p>
 
